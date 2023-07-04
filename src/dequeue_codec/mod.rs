@@ -22,8 +22,8 @@ pub const LEN: u8 = START + 6;
 /// An ack for a len message.
 pub const LEN_ACK: u8 = START + 7;
 
-pub const END: u8 = START + 8;
+pub const END: u8 = START + 7;
 
 pub fn is_dequeue_message(kind: u8) -> bool {
-    (START..END).contains(&kind)
+    (START..=END).contains(&kind)
 }

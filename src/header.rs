@@ -3,12 +3,35 @@ use std::{
     mem::size_of,
 };
 
-use crate::{error::Error, Decode, Encode};
+use crate::{dequeue_codec, error::Error, kv_store_codec, Decode, Encode};
 
 // TODO: need to map these to packet types, also need to do partial
 // decodes of header to get packet type and then decode the rest.
 pub enum Kind {
+    // dequeue messages
+    // make sure to keep these in sync with the ones in
+    // necronomicon/src/dequeue_codec/mod.rs
+    Enqueue = dequeue_codec::START,
+    EnqueueAck,
+    Dequeue,
+    DequeueAck,
+    Peek,
+    PeekAck,
+    Len,
+    LenAck = dequeue_codec::END,
 
+    // kv store messages
+    // make sure to keep these in sync with the ones in
+    // necronomicon/src/kv_store_codec/mod.rs
+    Get = kv_store_codec::START,
+    GetAck,
+    Put,
+    PutAck,
+    Delete,
+    DeleteAck = kv_store_codec::END,
+
+    // internal system messages
+    Patch = 0xff,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
