@@ -3,38 +3,95 @@ use std::{
     mem::size_of,
 };
 
-use crate::{dequeue_codec, error::Error, kv_store_codec, Decode, Encode};
+use crate::{dequeue_codec, error::Error, kv_store_codec, Encode};
 
 // TODO: need to map these to packet types, also need to do partial
 // decodes of header to get packet type and then decode the rest.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
     // dequeue messages
     // make sure to keep these in sync with the ones in
     // necronomicon/src/dequeue_codec/mod.rs
-    Enqueue = dequeue_codec::START,
+    Enqueue = dequeue_codec::START as isize,
     EnqueueAck,
     Dequeue,
     DequeueAck,
     Peek,
     PeekAck,
     Len,
-    LenAck = dequeue_codec::END,
+    LenAck = dequeue_codec::END as isize,
 
     // kv store messages
     // make sure to keep these in sync with the ones in
     // necronomicon/src/kv_store_codec/mod.rs
-    Get = kv_store_codec::START,
-    GetAck,
-    Put,
+    Put = kv_store_codec::START as isize,
     PutAck,
+    Get,
+    GetAck,
     Delete,
-    DeleteAck = kv_store_codec::END,
+    DeleteAck = kv_store_codec::END as isize,
 
     // internal system messages
     Patch = 0xff,
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+impl From<u8> for Kind {
+    fn from(value: u8) -> Self {
+        match value {
+            // dequeue messages
+            dequeue_codec::ENQUEUE => Kind::Enqueue,
+            dequeue_codec::ENQUEUE_ACK => Kind::EnqueueAck,
+            dequeue_codec::DEQUEUE => Kind::Dequeue,
+            dequeue_codec::DEQUEUE_ACK => Kind::DequeueAck,
+            dequeue_codec::PEEK => Kind::Peek,
+            dequeue_codec::PEEK_ACK => Kind::PeekAck,
+            dequeue_codec::LEN => Kind::Len,
+            dequeue_codec::LEN_ACK => Kind::LenAck,
+
+            // kv store messages
+            kv_store_codec::PUT => Kind::Put,
+            kv_store_codec::PUT_ACK => Kind::PutAck,
+            kv_store_codec::GET => Kind::Get,
+            kv_store_codec::GET_ACK => Kind::GetAck,
+            kv_store_codec::DELETE => Kind::Delete,
+            kv_store_codec::DELETE_ACK => Kind::DeleteAck,
+
+            // internal system messages
+            0xff => Kind::Patch,
+
+            _ => panic!("invalid kind: {}", value),
+        }
+    }
+}
+
+impl From<Kind> for u8 {
+    fn from(value: Kind) -> Self {
+        match value {
+            // dequeue messages
+            Kind::Enqueue => dequeue_codec::ENQUEUE,
+            Kind::EnqueueAck => dequeue_codec::ENQUEUE_ACK,
+            Kind::Dequeue => dequeue_codec::DEQUEUE,
+            Kind::DequeueAck => dequeue_codec::DEQUEUE_ACK,
+            Kind::Peek => dequeue_codec::PEEK,
+            Kind::PeekAck => dequeue_codec::PEEK_ACK,
+            Kind::Len => dequeue_codec::LEN,
+            Kind::LenAck => dequeue_codec::LEN_ACK,
+
+            // kv store messages
+            Kind::Put => kv_store_codec::PUT,
+            Kind::PutAck => kv_store_codec::PUT_ACK,
+            Kind::Get => kv_store_codec::GET,
+            Kind::GetAck => kv_store_codec::GET_ACK,
+            Kind::Delete => kv_store_codec::DELETE,
+            Kind::DeleteAck => kv_store_codec::DELETE_ACK,
+
+            // internal system messages
+            Kind::Patch => 0xff,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 #[repr(C, packed)]
 pub struct Header {
     kind: u8,
@@ -43,8 +100,16 @@ pub struct Header {
 }
 
 impl Header {
-    pub fn kind(&self) -> u8 {
-        self.kind
+    pub fn new(kind: Kind, version: u8, uuid: u128) -> Self {
+        Self {
+            kind: kind.into(),
+            version,
+            uuid,
+        }
+    }
+
+    pub fn kind(&self) -> Kind {
+        self.kind.into()
     }
 
     pub fn version(&self) -> u8 {
@@ -54,10 +119,8 @@ impl Header {
     pub fn uuid(&self) -> u128 {
         self.uuid
     }
-}
 
-impl Decode for Header {
-    fn decode(reader: &mut impl Read) -> Result<Self, Error> {
+    pub fn decode(reader: &mut impl Read) -> Result<Self, Error> {
         let mut bytes = [0; size_of::<Header>()];
         reader
             .read_exact(&mut bytes)
@@ -99,7 +162,7 @@ mod test {
 
     use test_case::test_case;
 
-    use crate::{Decode, Encode};
+    use crate::Encode;
 
     use super::Header;
 

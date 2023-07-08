@@ -1,38 +1,42 @@
-use crate::{Decode, Encode, Error, Header, Kind, PartialDecode};
+use crate::{Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(C)]
-pub struct EnqueueAck {
+pub struct LenAck {
     header: Header,
     response_code: u8,
+    len: u64,
 }
 
-impl PartialDecode for EnqueueAck {
+impl PartialDecode for LenAck {
     fn decode(header: Header, reader: &mut impl std::io::Read) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::EnqueueAck);
+        assert_eq!(header.kind(), Kind::LenAck);
 
         let response_code = u8::decode(reader)?;
+        let len = u64::decode(reader)?;
 
         Ok(Self {
             header,
             response_code,
+            len,
         })
     }
 }
 
-impl Encode for EnqueueAck {
+impl Encode for LenAck {
     fn encode(&self, writer: &mut impl std::io::Write) -> Result<(), Error> {
         self.header.encode(writer)?;
         self.response_code.encode(writer)?;
+        self.len.encode(writer)?;
 
         Ok(())
     }
 }
 
-impl crate::Ack for EnqueueAck {
+impl Ack for LenAck {
     fn header(&self) -> &Header {
         &self.header
     }
@@ -43,22 +47,23 @@ impl crate::Ack for EnqueueAck {
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::{Encode, Header, Kind, PartialDecode};
+mod test {
+    use crate::{header::Kind, Encode, Header, PartialDecode};
 
-    use super::EnqueueAck;
+    use super::LenAck;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::EnqueueAck, 123, 456);
+        let header = Header::new(Kind::LenAck, 123, 456);
         let mut buf = Vec::new();
-        let enqueue_ack = EnqueueAck {
+        let len = LenAck {
             header,
             response_code: 0,
+            len: 123,
         };
-        enqueue_ack.encode(&mut buf).unwrap();
+        len.encode(&mut buf).unwrap();
         let mut buf = buf.as_slice();
-        let decoded = EnqueueAck::decode(header, &mut buf).unwrap();
-        assert_eq!(enqueue_ack, decoded);
+        let decoded = LenAck::decode(header, &mut buf).unwrap();
+        assert_eq!(len, decoded);
     }
 }

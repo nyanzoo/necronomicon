@@ -1,7 +1,26 @@
-pub mod dequeue;
-pub mod dequeue_ack;
-pub mod enqueue;
-pub mod enqueue_ack;
+mod dequeue;
+pub use dequeue::Dequeue;
+
+mod dequeue_ack;
+pub use dequeue_ack::DequeueAck;
+
+mod enqueue;
+pub use enqueue::Enqueue;
+
+mod enqueue_ack;
+pub use enqueue_ack::EnqueueAck;
+
+mod len;
+pub use len::Len;
+
+mod len_ack;
+pub use len_ack::LenAck;
+
+mod peek;
+pub use peek::Peek;
+
+mod peek_ack;
+pub use peek_ack::PeekAck;
 
 pub const START: u8 = 0;
 

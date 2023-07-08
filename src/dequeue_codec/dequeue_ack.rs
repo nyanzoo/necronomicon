@@ -1,4 +1,4 @@
-use crate::{error::Error, header::Header, Ack, Decode, Encode};
+use crate::{Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(C)]
@@ -8,16 +8,16 @@ pub struct DequeueAck {
     value: Vec<u8>,
 }
 
-impl Decode for DequeueAck {
-    fn decode(reader: &mut impl std::io::Read) -> Result<Self, crate::error::Error>
+impl PartialDecode for DequeueAck {
+    fn decode(header: Header, reader: &mut impl std::io::Read) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        let header = Header::decode(reader)?;
-        let mut buf = [0; 1];
-        reader.read_exact(&mut buf).map_err(Error::Decode)?;
-        let response_code = buf[0];
+        assert_eq!(header.kind(), Kind::DequeueAck);
+
+        let response_code = u8::decode(reader)?;
         let value = Vec::<u8>::decode(reader)?;
+
         Ok(Self {
             header,
             response_code,
@@ -27,12 +27,11 @@ impl Decode for DequeueAck {
 }
 
 impl Encode for DequeueAck {
-    fn encode(&self, writer: &mut impl std::io::Write) -> Result<(), crate::error::Error> {
+    fn encode(&self, writer: &mut impl std::io::Write) -> Result<(), Error> {
         self.header.encode(writer)?;
-        writer
-            .write_all(&[self.response_code])
-            .map_err(Error::Encode)?;
+        self.response_code.encode(writer)?;
         self.value.encode(writer)?;
+
         Ok(())
     }
 }
@@ -49,21 +48,22 @@ impl Ack for DequeueAck {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Decode, Encode};
+    use crate::{Encode, Header, Kind, PartialDecode};
 
     use super::DequeueAck;
 
     #[test]
     fn test_encode_decode() {
+        let header = Header::new(Kind::DequeueAck, 123, 456);
         let mut buf = Vec::new();
         let dequeue_ack = DequeueAck {
-            header: Default::default(),
+            header,
             response_code: 0,
             value: vec![1, 2, 3],
         };
         dequeue_ack.encode(&mut buf).unwrap();
         let mut buf = buf.as_slice();
-        let decoded = DequeueAck::decode(&mut buf).unwrap();
+        let decoded = DequeueAck::decode(header, &mut buf).unwrap();
         assert_eq!(dequeue_ack, decoded);
     }
 }

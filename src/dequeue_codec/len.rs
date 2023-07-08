@@ -2,17 +2,17 @@ use crate::{Decode, Encode, Error, Header, Kind, PartialDecode};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(C)]
-pub struct Dequeue {
+pub struct Len {
     header: Header,
     path: String,
 }
 
-impl PartialDecode for Dequeue {
+impl PartialDecode for Len {
     fn decode(header: Header, reader: &mut impl std::io::Read) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::Dequeue);
+        assert_eq!(header.kind(), Kind::Len);
 
         let path = String::decode(reader)?;
 
@@ -20,7 +20,7 @@ impl PartialDecode for Dequeue {
     }
 }
 
-impl Encode for Dequeue {
+impl Encode for Len {
     fn encode(&self, writer: &mut impl std::io::Write) -> Result<(), Error> {
         self.header.encode(writer)?;
         self.path.encode(writer)?;
@@ -31,21 +31,21 @@ impl Encode for Dequeue {
 
 #[cfg(test)]
 mod test {
-    use crate::{Encode, Header, Kind, PartialDecode};
+    use crate::{header::Kind, Encode, Header, PartialDecode};
 
-    use super::Dequeue;
+    use super::Len;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::Dequeue, 123, 456);
+        let header = Header::new(Kind::Len, 123, 456);
         let mut buf = Vec::new();
-        let dequeue = Dequeue {
+        let len = Len {
             header,
             path: "test".to_string(),
         };
-        dequeue.encode(&mut buf).unwrap();
+        len.encode(&mut buf).unwrap();
         let mut buf = buf.as_slice();
-        let decoded = Dequeue::decode(header, &mut buf).unwrap();
-        assert_eq!(dequeue, decoded);
+        let decoded = Len::decode(header, &mut buf).unwrap();
+        assert_eq!(len, decoded);
     }
 }
