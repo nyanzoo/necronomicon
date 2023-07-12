@@ -1,18 +1,23 @@
+use std::io::{Read, Write};
+
 use crate::{Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(C)]
 pub struct PutAck {
-    header: Header,
-    response_code: u8,
+    pub(crate) header: Header,
+    pub(crate) response_code: u8,
 }
 
-impl PartialDecode for PutAck {
-    fn decode(header: Header, reader: &mut impl std::io::Read) -> Result<Self, Error>
+impl<R> PartialDecode<R> for PutAck
+where
+    R: Read,
+{
+    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::Peek);
+        assert_eq!(header.kind(), Kind::PutAck);
 
         let response_code = u8::decode(reader)?;
 
@@ -23,8 +28,11 @@ impl PartialDecode for PutAck {
     }
 }
 
-impl Encode for PutAck {
-    fn encode(&self, writer: &mut impl std::io::Write) -> Result<(), Error> {
+impl<W> Encode<W> for PutAck
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
         self.response_code.encode(writer)?;
 
@@ -44,7 +52,7 @@ impl Ack for PutAck {
 
 #[cfg(test)]
 mod test {
-    use crate::{Encode, Header, Kind, PartialDecode};
+    use crate::{Decode, Encode, Header, Kind, PartialDecode};
 
     use super::PutAck;
 
@@ -58,6 +66,7 @@ mod test {
         };
         put_ack.encode(&mut buf).unwrap();
         let mut buf = buf.as_slice();
+        let header = Header::decode(&mut buf).unwrap();
         let decoded = PutAck::decode(header, &mut buf).unwrap();
         assert_eq!(put_ack, decoded);
     }

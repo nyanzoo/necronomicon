@@ -1,15 +1,15 @@
 use std::io::{Read, Write};
 
-use crate::{Decode, Encode, Error, Header, Kind, PartialDecode};
+use crate::{Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(C)]
-pub struct EnqueueAck {
+pub struct ChainAck {
     pub(crate) header: Header,
     pub(crate) response_code: u8,
 }
 
-impl<R> PartialDecode<R> for EnqueueAck
+impl<R> PartialDecode<R> for ChainAck
 where
     R: Read,
 {
@@ -17,7 +17,7 @@ where
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::EnqueueAck);
+        assert_eq!(header.kind(), Kind::ChainAck);
 
         let response_code = u8::decode(reader)?;
 
@@ -28,7 +28,7 @@ where
     }
 }
 
-impl<W> Encode<W> for EnqueueAck
+impl<W> Encode<W> for ChainAck
 where
     W: Write,
 {
@@ -40,7 +40,7 @@ where
     }
 }
 
-impl crate::Ack for EnqueueAck {
+impl Ack for ChainAck {
     fn header(&self) -> &Header {
         &self.header
     }
@@ -51,23 +51,23 @@ impl crate::Ack for EnqueueAck {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use crate::{Decode, Encode, Header, Kind, PartialDecode};
 
-    use super::EnqueueAck;
+    use super::ChainAck;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::EnqueueAck, 123, 456);
+        let header = Header::new(Kind::ChainAck, 123, 456);
         let mut buf = Vec::new();
-        let enqueue_ack = EnqueueAck {
+        let chain_ack = ChainAck {
             header,
             response_code: 0,
         };
-        enqueue_ack.encode(&mut buf).unwrap();
+        chain_ack.encode(&mut buf).unwrap();
         let mut buf = buf.as_slice();
         let header = Header::decode(&mut buf).unwrap();
-        let decoded = EnqueueAck::decode(header, &mut buf).unwrap();
-        assert_eq!(enqueue_ack, decoded);
+        let decoded = ChainAck::decode(header, &mut buf).unwrap();
+        assert_eq!(chain_ack, decoded);
     }
 }

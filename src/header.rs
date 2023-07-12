@@ -3,7 +3,7 @@ use std::{
     mem::size_of,
 };
 
-use crate::{dequeue_codec, error::Error, kv_store_codec, Encode};
+use crate::{dequeue_codec, error::Error, kv_store_codec, system_codec, Decode, Encode};
 
 // TODO: need to map these to packet types, also need to do partial
 // decodes of header to get packet type and then decode the rest.
@@ -32,7 +32,12 @@ pub enum Kind {
     DeleteAck = kv_store_codec::END as isize,
 
     // internal system messages
-    Patch = 0xff,
+    Chain = system_codec::START as isize,
+    ChainAck,
+    Join,
+    JoinAck,
+    Transfer,
+    TransferAck = system_codec::END as isize,
 }
 
 impl From<u8> for Kind {
@@ -57,7 +62,12 @@ impl From<u8> for Kind {
             kv_store_codec::DELETE_ACK => Kind::DeleteAck,
 
             // internal system messages
-            0xff => Kind::Patch,
+            system_codec::CHAIN => Kind::Chain,
+            system_codec::CHAIN_ACK => Kind::ChainAck,
+            system_codec::JOIN => Kind::Join,
+            system_codec::JOIN_ACK => Kind::JoinAck,
+            system_codec::TRANSFER => Kind::Transfer,
+            system_codec::TRANSFER_ACK => Kind::TransferAck,
 
             _ => panic!("invalid kind: {}", value),
         }
@@ -86,7 +96,12 @@ impl From<Kind> for u8 {
             Kind::DeleteAck => kv_store_codec::DELETE_ACK,
 
             // internal system messages
-            Kind::Patch => 0xff,
+            Kind::Chain => system_codec::CHAIN,
+            Kind::ChainAck => system_codec::CHAIN_ACK,
+            Kind::Join => system_codec::JOIN,
+            Kind::JoinAck => system_codec::JOIN_ACK,
+            Kind::Transfer => system_codec::TRANSFER,
+            Kind::TransferAck => system_codec::TRANSFER_ACK,
         }
     }
 }
@@ -119,8 +134,13 @@ impl Header {
     pub fn uuid(&self) -> u128 {
         self.uuid
     }
+}
 
-    pub fn decode(reader: &mut impl Read) -> Result<Self, Error> {
+impl<R> Decode<R> for Header
+where
+    R: Read,
+{
+    fn decode(reader: &mut R) -> Result<Self, Error> {
         let mut bytes = [0; size_of::<Header>()];
         reader
             .read_exact(&mut bytes)
@@ -143,8 +163,11 @@ impl Header {
     }
 }
 
-impl Encode for Header {
-    fn encode(&self, writer: &mut impl Write) -> Result<(), Error> {
+impl<W> Encode<W> for Header
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
         let mut buf = [0; size_of::<Header>()];
         buf[0] = self.kind;
         buf[1] = self.version;
@@ -162,7 +185,7 @@ mod test {
 
     use test_case::test_case;
 
-    use crate::Encode;
+    use crate::{Decode, Encode};
 
     use super::Header;
 

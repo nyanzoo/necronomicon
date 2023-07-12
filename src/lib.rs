@@ -1,23 +1,27 @@
 use std::io::{Read, Write};
 
+mod codes;
+pub use codes::{SERVER_BUSY, SUCCESS};
+
 pub mod dequeue_codec;
+use dequeue_codec::{Dequeue, DequeueAck, Enqueue, EnqueueAck, Len, LenAck, Peek, PeekAck};
 
 mod error;
-use dequeue_codec::{Dequeue, DequeueAck, Enqueue, EnqueueAck, Len, LenAck, Peek, PeekAck};
 pub use error::Error;
 
 mod header;
 pub use header::{Header, Kind};
-use kv_store_codec::{Delete, DeleteAck, Get, GetAck, Put, PutAck};
 
 pub mod kv_store_codec;
+use kv_store_codec::{Delete, DeleteAck, Get, GetAck, Put, PutAck};
 
 pub mod system_codec;
+use system_codec::{Chain, ChainAck, Join, JoinAck, Transfer, TransferAck};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Packet {
     // dequeue
-    Enqueue(dequeue_codec::Enqueue),
+    Enqueue(Enqueue),
     EnqueueAck(EnqueueAck),
     Dequeue(Dequeue),
     DequeueAck(DequeueAck),
@@ -35,7 +39,37 @@ pub enum Packet {
     DeleteAck(DeleteAck),
 
     // internal system messages
-    Patch(Vec<u8>),
+    Chain(Chain),
+    ChainAck(ChainAck),
+    Join(Join),
+    JoinAck(JoinAck),
+    Transfer(Transfer),
+    TransferAck(TransferAck),
+}
+
+impl Packet {
+    pub fn nack(self, response_code: u8) -> Option<Packet> {
+        match self {
+            // dequeue
+            Packet::Enqueue(this) => Some(Packet::EnqueueAck(this.nack(response_code))),
+            Packet::Dequeue(this) => Some(Packet::DequeueAck(this.nack(response_code))),
+            Packet::Peek(this) => Some(Packet::PeekAck(this.nack(response_code))),
+            Packet::Len(this) => Some(Packet::LenAck(this.nack(response_code))),
+
+            // kv store
+            Packet::Put(this) => Some(Packet::PutAck(this.nack(response_code))),
+            Packet::Get(this) => Some(Packet::GetAck(this.nack(response_code))),
+            Packet::Delete(this) => Some(Packet::DeleteAck(this.nack(response_code))),
+
+            // internal system messages
+            Packet::Chain(this) => Some(Packet::ChainAck(this.nack(response_code))),
+            Packet::Join(this) => Some(Packet::JoinAck(this.nack(response_code))),
+            Packet::Transfer(this) => Some(Packet::TransferAck(this.nack(response_code))),
+
+            // acks
+            _ => None,
+        }
+    }
 }
 
 pub trait Ack {
@@ -46,13 +80,19 @@ pub trait Ack {
 
 /// # Description
 /// After decoding the `Header`, the `PartialDecode` trait is used to decode the rest of the bytes.
-pub trait PartialDecode {
-    fn decode(header: Header, reader: &mut impl Read) -> Result<Self, Error>
+pub trait PartialDecode<R>
+where
+    R: Read,
+{
+    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
     where
         Self: Sized;
 }
 
-pub fn partial_decode(header: Header, reader: &mut impl Read) -> Result<Packet, Error> {
+pub fn partial_decode<R>(header: Header, reader: &mut R) -> Result<Packet, Error>
+where
+    R: Read,
+{
     let packet = match header.kind() {
         // dequeue messages
         Kind::Enqueue => Packet::Enqueue(Enqueue::decode(header, reader)?),
@@ -73,28 +113,42 @@ pub fn partial_decode(header: Header, reader: &mut impl Read) -> Result<Packet, 
         Kind::DeleteAck => Packet::DeleteAck(DeleteAck::decode(header, reader)?),
 
         // internal system messages
-        Kind::Patch => todo!(),
+        Kind::Chain => Packet::Chain(Chain::decode(header, reader)?),
+        Kind::ChainAck => Packet::ChainAck(ChainAck::decode(header, reader)?),
+        Kind::Join => Packet::Join(Join::decode(header, reader)?),
+        Kind::JoinAck => Packet::JoinAck(JoinAck::decode(header, reader)?),
+        Kind::Transfer => Packet::Transfer(Transfer::decode(header, reader)?),
+        Kind::TransferAck => Packet::TransferAck(TransferAck::decode(header, reader)?),
     };
 
     Ok(packet)
 }
 
-trait Decode {
-    fn decode(reader: &mut impl Read) -> Result<Self, Error>
+trait Decode<R>
+where
+    R: Read,
+{
+    fn decode(reader: &mut R) -> Result<Self, Error>
     where
         Self: Sized;
 }
 
-pub trait Encode {
-    fn encode(&self, writer: &mut impl Write) -> Result<(), Error>;
+pub trait Encode<W>
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error>;
 }
 
 //
 // String + Vec impls
 //
 
-impl Decode for String {
-    fn decode(reader: &mut impl Read) -> Result<Self, Error>
+impl<R> Decode<R> for String
+where
+    R: Read,
+{
+    fn decode(reader: &mut R) -> Result<Self, Error>
     where
         Self: Sized,
     {
@@ -107,8 +161,11 @@ impl Decode for String {
     }
 }
 
-impl Encode for String {
-    fn encode(&self, writer: &mut impl Write) -> Result<(), Error> {
+impl<W> Encode<W> for String
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
         let bytes = self.as_bytes();
         let len = bytes.len() as u16;
         writer
@@ -119,8 +176,11 @@ impl Encode for String {
     }
 }
 
-impl Decode for Vec<u8> {
-    fn decode(reader: &mut impl Read) -> Result<Self, Error>
+impl<R> Decode<R> for Vec<u8>
+where
+    R: Read,
+{
+    fn decode(reader: &mut R) -> Result<Self, Error>
     where
         Self: Sized,
     {
@@ -133,8 +193,11 @@ impl Decode for Vec<u8> {
     }
 }
 
-impl Encode for Vec<u8> {
-    fn encode(&self, writer: &mut impl Write) -> Result<(), Error> {
+impl<W> Encode<W> for Vec<u8>
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
         let len = self.len() as u16;
         writer
             .write_all(&len.to_be_bytes())
@@ -148,8 +211,11 @@ impl Encode for Vec<u8> {
 // integer types
 //
 
-impl Decode for u8 {
-    fn decode(reader: &mut impl Read) -> Result<Self, Error>
+impl<R> Decode<R> for u8
+where
+    R: Read,
+{
+    fn decode(reader: &mut R) -> Result<Self, Error>
     where
         Self: Sized,
     {
@@ -159,15 +225,23 @@ impl Decode for u8 {
     }
 }
 
-impl Encode for u8 {
-    fn encode(&self, writer: &mut impl Write) -> Result<(), Error> {
-        writer.write_all(&[*self]).map_err(Error::Encode)?;
+impl<W> Encode<W> for u8
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
+        writer
+            .write_all(&self.to_be_bytes())
+            .map_err(Error::Encode)?;
         Ok(())
     }
 }
 
-impl Decode for u16 {
-    fn decode(reader: &mut impl Read) -> Result<Self, Error>
+impl<R> Decode<R> for u16
+where
+    R: Read,
+{
+    fn decode(reader: &mut R) -> Result<Self, Error>
     where
         Self: Sized,
     {
@@ -177,8 +251,11 @@ impl Decode for u16 {
     }
 }
 
-impl Encode for u16 {
-    fn encode(&self, writer: &mut impl Write) -> Result<(), Error> {
+impl<W> Encode<W> for u16
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
         writer
             .write_all(&self.to_be_bytes())
             .map_err(Error::Encode)?;
@@ -186,8 +263,11 @@ impl Encode for u16 {
     }
 }
 
-impl Decode for u32 {
-    fn decode(reader: &mut impl Read) -> Result<Self, Error>
+impl<R> Decode<R> for u32
+where
+    R: Read,
+{
+    fn decode(reader: &mut R) -> Result<Self, Error>
     where
         Self: Sized,
     {
@@ -197,8 +277,11 @@ impl Decode for u32 {
     }
 }
 
-impl Encode for u32 {
-    fn encode(&self, writer: &mut impl Write) -> Result<(), Error> {
+impl<W> Encode<W> for u32
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
         writer
             .write_all(&self.to_be_bytes())
             .map_err(Error::Encode)?;
@@ -206,8 +289,11 @@ impl Encode for u32 {
     }
 }
 
-impl Decode for u64 {
-    fn decode(reader: &mut impl Read) -> Result<Self, Error>
+impl<R> Decode<R> for u64
+where
+    R: Read,
+{
+    fn decode(reader: &mut R) -> Result<Self, Error>
     where
         Self: Sized,
     {
@@ -217,8 +303,11 @@ impl Decode for u64 {
     }
 }
 
-impl Encode for u64 {
-    fn encode(&self, writer: &mut impl Write) -> Result<(), Error> {
+impl<W> Encode<W> for u64
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
         writer
             .write_all(&self.to_be_bytes())
             .map_err(Error::Encode)?;
@@ -228,7 +317,7 @@ impl Encode for u64 {
 
 #[cfg(test)]
 mod tests {
-    use std::fmt::Debug;
+    use std::{fmt::Debug, io::Cursor};
 
     use super::{Decode, Encode};
 
@@ -240,11 +329,12 @@ mod tests {
     #[test_case::test_case(vec![1, 2, 3]; "vec")]
     fn test_encode_decode<T>(val: T)
     where
-        T: Decode + Encode + Debug + Eq + PartialEq,
+        T: Decode<Cursor<Vec<u8>>> + Encode<Vec<u8>> + Debug + Eq + PartialEq,
     {
         let mut bytes = vec![];
         val.encode(&mut bytes).unwrap();
-        let decoded = T::decode(&mut bytes.as_slice()).unwrap();
+        let mut cursor = Cursor::new(bytes);
+        let decoded = T::decode(&mut cursor).unwrap();
         assert_eq!(val, decoded);
     }
 }

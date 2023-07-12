@@ -31,7 +31,7 @@ pub const DELETE: u8 = START + 4;
 /// An ack for a delete message.
 pub const DELETE_ACK: u8 = START + 5;
 
-pub const END: u8 = START + 6;
+pub const END: u8 = START + 5;
 
 pub fn is_kv_store_message(kind: u8) -> bool {
     (START..=END).contains(&kind)

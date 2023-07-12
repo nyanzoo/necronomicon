@@ -1,19 +1,24 @@
+use std::io::{Read, Write};
+
 use crate::{Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(C)]
 pub struct GetAck {
-    header: Header,
-    response_code: u8,
-    value: Vec<u8>,
+    pub(crate) header: Header,
+    pub(crate) response_code: u8,
+    pub(crate) value: Vec<u8>,
 }
 
-impl PartialDecode for GetAck {
-    fn decode(header: Header, reader: &mut impl std::io::Read) -> Result<Self, Error>
+impl<R> PartialDecode<R> for GetAck
+where
+    R: Read,
+{
+    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::Peek);
+        assert_eq!(header.kind(), Kind::GetAck);
 
         let response_code = u8::decode(reader)?;
         let value = Vec::decode(reader)?;
@@ -26,8 +31,11 @@ impl PartialDecode for GetAck {
     }
 }
 
-impl Encode for GetAck {
-    fn encode(&self, writer: &mut impl std::io::Write) -> Result<(), Error> {
+impl<W> Encode<W> for GetAck
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
         self.response_code.encode(writer)?;
         self.value.encode(writer)?;
@@ -48,7 +56,7 @@ impl Ack for GetAck {
 
 #[cfg(test)]
 mod test {
-    use crate::{Encode, Header, Kind, PartialDecode};
+    use crate::{Decode, Encode, Header, Kind, PartialDecode};
 
     use super::GetAck;
 
@@ -63,6 +71,7 @@ mod test {
         };
         get_ack.encode(&mut buf).unwrap();
         let mut buf = buf.as_slice();
+        let header = Header::decode(&mut buf).unwrap();
         let decoded = GetAck::decode(header, &mut buf).unwrap();
         assert_eq!(get_ack, decoded);
     }

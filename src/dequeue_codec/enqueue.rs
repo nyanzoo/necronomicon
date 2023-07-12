@@ -1,4 +1,8 @@
-use crate::{Decode, Encode, Error, Header, Kind, PartialDecode};
+use std::io::{Read, Write};
+
+use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+
+use super::EnqueueAck;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(C)]
@@ -8,8 +12,49 @@ pub struct Enqueue {
     value: Vec<u8>,
 }
 
-impl PartialDecode for Enqueue {
-    fn decode(header: Header, reader: &mut impl std::io::Read) -> Result<Self, Error>
+impl Enqueue {
+    pub fn new(header: Header, path: String, value: Vec<u8>) -> Self {
+        assert_eq!(header.kind(), Kind::Enqueue);
+
+        Self {
+            header,
+            path,
+            value,
+        }
+    }
+
+    pub fn header(&self) -> Header {
+        self.header
+    }
+
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
+    pub fn value(&self) -> &[u8] {
+        &self.value
+    }
+
+    pub fn ack(self) -> EnqueueAck {
+        EnqueueAck {
+            header: Header::new(Kind::EnqueueAck, self.header.version(), self.header.uuid()),
+            response_code: SUCCESS,
+        }
+    }
+
+    pub fn nack(self, response_code: u8) -> EnqueueAck {
+        EnqueueAck {
+            header: Header::new(Kind::EnqueueAck, self.header.version(), self.header.uuid()),
+            response_code,
+        }
+    }
+}
+
+impl<R> PartialDecode<R> for Enqueue
+where
+    R: Read,
+{
+    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
     where
         Self: Sized,
     {
@@ -26,8 +71,11 @@ impl PartialDecode for Enqueue {
     }
 }
 
-impl Encode for Enqueue {
-    fn encode(&self, writer: &mut impl std::io::Write) -> Result<(), Error> {
+impl<W> Encode<W> for Enqueue
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
         self.path.encode(writer)?;
         self.value.encode(writer)?;
@@ -38,7 +86,7 @@ impl Encode for Enqueue {
 
 #[cfg(test)]
 mod test {
-    use crate::{header::Kind, Encode, Header, PartialDecode};
+    use crate::{header::Kind, Decode, Encode, Header, PartialDecode};
 
     use super::Enqueue;
 
@@ -53,6 +101,7 @@ mod test {
         };
         enqueue.encode(&mut buf).unwrap();
         let mut buf = buf.as_slice();
+        let header = Header::decode(&mut buf).unwrap();
         let decoded = Enqueue::decode(header, &mut buf).unwrap();
         assert_eq!(enqueue, decoded);
     }

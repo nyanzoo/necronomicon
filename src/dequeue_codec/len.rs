@@ -1,14 +1,53 @@
-use crate::{Decode, Encode, Error, Header, Kind, PartialDecode};
+use std::io::{Read, Write};
+
+use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+
+use super::LenAck;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(C)]
 pub struct Len {
-    header: Header,
-    path: String,
+    pub(crate) header: Header,
+    pub(crate) path: String,
 }
 
-impl PartialDecode for Len {
-    fn decode(header: Header, reader: &mut impl std::io::Read) -> Result<Self, Error>
+impl Len {
+    pub fn new(header: Header, path: String) -> Self {
+        assert_eq!(header.kind(), Kind::Len);
+
+        Self { header, path }
+    }
+
+    pub fn header(&self) -> Header {
+        self.header
+    }
+
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
+    pub fn ack(self, len: u64) -> LenAck {
+        LenAck {
+            header: Header::new(Kind::LenAck, self.header.version(), self.header.uuid()),
+            len,
+            response_code: SUCCESS,
+        }
+    }
+
+    pub fn nack(self, response_code: u8) -> LenAck {
+        LenAck {
+            header: Header::new(Kind::LenAck, self.header.version(), self.header.uuid()),
+            len: 0,
+            response_code,
+        }
+    }
+}
+
+impl<R> PartialDecode<R> for Len
+where
+    R: Read,
+{
+    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
     where
         Self: Sized,
     {
@@ -20,8 +59,11 @@ impl PartialDecode for Len {
     }
 }
 
-impl Encode for Len {
-    fn encode(&self, writer: &mut impl std::io::Write) -> Result<(), Error> {
+impl<W> Encode<W> for Len
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
         self.path.encode(writer)?;
 
@@ -31,7 +73,7 @@ impl Encode for Len {
 
 #[cfg(test)]
 mod test {
-    use crate::{header::Kind, Encode, Header, PartialDecode};
+    use crate::{header::Kind, Decode, Encode, Header, PartialDecode};
 
     use super::Len;
 
@@ -45,6 +87,7 @@ mod test {
         };
         len.encode(&mut buf).unwrap();
         let mut buf = buf.as_slice();
+        let header = Header::decode(&mut buf).unwrap();
         let decoded = Len::decode(header, &mut buf).unwrap();
         assert_eq!(len, decoded);
     }

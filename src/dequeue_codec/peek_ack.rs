@@ -1,15 +1,20 @@
+use std::io::{Read, Write};
+
 use crate::{Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(C)]
 pub struct PeekAck {
-    header: Header,
-    response_code: u8,
-    value: Vec<u8>,
+    pub(crate) header: Header,
+    pub(crate) response_code: u8,
+    pub(crate) value: Vec<u8>,
 }
 
-impl PartialDecode for PeekAck {
-    fn decode(header: Header, reader: &mut impl std::io::Read) -> Result<Self, Error>
+impl<R> PartialDecode<R> for PeekAck
+where
+    R: Read,
+{
+    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
     where
         Self: Sized,
     {
@@ -26,8 +31,11 @@ impl PartialDecode for PeekAck {
     }
 }
 
-impl Encode for PeekAck {
-    fn encode(&self, writer: &mut impl std::io::Write) -> Result<(), Error> {
+impl<W> Encode<W> for PeekAck
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
         self.response_code.encode(writer)?;
         self.value.encode(writer)?;
@@ -48,7 +56,7 @@ impl Ack for PeekAck {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Encode, Header, Kind, PartialDecode};
+    use crate::{Decode, Encode, Header, Kind, PartialDecode};
 
     use super::PeekAck;
 
@@ -63,6 +71,7 @@ mod tests {
         };
         peek_ack.encode(&mut buf).unwrap();
         let mut buf = buf.as_slice();
+        let header = Header::decode(&mut buf).unwrap();
         let decoded = PeekAck::decode(header, &mut buf).unwrap();
         assert_eq!(peek_ack, decoded);
     }
