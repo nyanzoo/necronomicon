@@ -19,7 +19,11 @@ pub enum Kind {
     Peek,
     PeekAck,
     Len,
-    LenAck = dequeue_codec::END as isize,
+    LenAck,
+    CreateQueue,
+    CreateQueueAck,
+    DeleteQueue,
+    DeleteQueueAck = dequeue_codec::END as isize,
 
     // kv store messages
     // make sure to keep these in sync with the ones in
@@ -52,6 +56,10 @@ impl From<u8> for Kind {
             dequeue_codec::PEEK_ACK => Kind::PeekAck,
             dequeue_codec::LEN => Kind::Len,
             dequeue_codec::LEN_ACK => Kind::LenAck,
+            dequeue_codec::CREATE => Kind::CreateQueue,
+            dequeue_codec::CREATE_ACK => Kind::CreateQueueAck,
+            dequeue_codec::DELETE => Kind::DeleteQueue,
+            dequeue_codec::DELETE_ACK => Kind::DeleteQueueAck,
 
             // kv store messages
             kv_store_codec::PUT => Kind::Put,
@@ -86,6 +94,10 @@ impl From<Kind> for u8 {
             Kind::PeekAck => dequeue_codec::PEEK_ACK,
             Kind::Len => dequeue_codec::LEN,
             Kind::LenAck => dequeue_codec::LEN_ACK,
+            Kind::CreateQueue => dequeue_codec::CREATE,
+            Kind::CreateQueueAck => dequeue_codec::CREATE_ACK,
+            Kind::DeleteQueue => dequeue_codec::DELETE,
+            Kind::DeleteQueueAck => dequeue_codec::DELETE_ACK,
 
             // kv store messages
             Kind::Put => kv_store_codec::PUT,

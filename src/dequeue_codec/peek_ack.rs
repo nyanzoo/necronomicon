@@ -56,23 +56,18 @@ impl Ack for PeekAck {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Decode, Encode, Header, Kind, PartialDecode};
+    use crate::{tests::test_encode_decode_packet, Kind};
 
     use super::PeekAck;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::PeekAck, 123, 456);
-        let mut buf = Vec::new();
-        let peek_ack = PeekAck {
-            header,
-            response_code: 0,
-            value: vec![1, 2, 3],
-        };
-        peek_ack.encode(&mut buf).unwrap();
-        let mut buf = buf.as_slice();
-        let header = Header::decode(&mut buf).unwrap();
-        let decoded = PeekAck::decode(header, &mut buf).unwrap();
-        assert_eq!(peek_ack, decoded);
+        test_encode_decode_packet!(
+            Kind::PeekAck,
+            PeekAck {
+                response_code: 0,
+                value: vec![1, 2, 3],
+            }
+        );
     }
 }

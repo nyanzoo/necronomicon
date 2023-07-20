@@ -1,3 +1,15 @@
+mod create;
+pub use create::Create;
+
+mod create_ack;
+pub use create_ack::CreateAck;
+
+mod delete;
+pub use delete::Delete;
+
+mod delete_ack;
+pub use delete_ack::DeleteAck;
+
 mod dequeue;
 pub use dequeue::Dequeue;
 
@@ -40,8 +52,16 @@ pub const PEEK_ACK: u8 = START + 5;
 pub const LEN: u8 = START + 6;
 /// An ack for a len message.
 pub const LEN_ACK: u8 = START + 7;
+/// A message for creating a new queue.
+pub const CREATE: u8 = START + 8;
+/// An ack for a create message.
+pub const CREATE_ACK: u8 = START + 9;
+/// A message for deleting a queue.
+pub const DELETE: u8 = START + 10;
+/// An ack for a delete message.
+pub const DELETE_ACK: u8 = START + 11;
 
-pub const END: u8 = START + 7;
+pub const END: u8 = START + 11;
 
 pub fn is_dequeue_message(kind: u8) -> bool {
     (START..=END).contains(&kind)

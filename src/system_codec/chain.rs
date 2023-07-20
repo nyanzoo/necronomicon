@@ -71,24 +71,19 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{system_codec::Position, Decode, Encode, Header, Kind, PartialDecode};
+    use crate::{system_codec::Position, tests::test_encode_decode_packet, Kind};
 
     use super::Chain;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::Chain, 123, 456);
-        let mut buf = Vec::new();
-        let chain = Chain {
-            header,
-            position: Position::Head {
-                next: "next".to_owned(),
-            },
-        };
-        chain.encode(&mut buf).unwrap();
-        let mut buf = buf.as_slice();
-        let header = Header::decode(&mut buf).unwrap();
-        let decoded = Chain::decode(header, &mut buf).unwrap();
-        assert_eq!(chain, decoded);
+        test_encode_decode_packet!(
+            Kind::Chain,
+            Chain {
+                position: Position::Head {
+                    next: "next".to_owned(),
+                },
+            }
+        );
     }
 }

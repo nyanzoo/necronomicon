@@ -52,22 +52,12 @@ impl crate::Ack for EnqueueAck {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Decode, Encode, Header, Kind, PartialDecode};
+    use crate::{tests::test_encode_decode_packet, Kind};
 
     use super::EnqueueAck;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::EnqueueAck, 123, 456);
-        let mut buf = Vec::new();
-        let enqueue_ack = EnqueueAck {
-            header,
-            response_code: 0,
-        };
-        enqueue_ack.encode(&mut buf).unwrap();
-        let mut buf = buf.as_slice();
-        let header = Header::decode(&mut buf).unwrap();
-        let decoded = EnqueueAck::decode(header, &mut buf).unwrap();
-        assert_eq!(enqueue_ack, decoded);
+        test_encode_decode_packet!(Kind::EnqueueAck, EnqueueAck { response_code: 0 });
     }
 }

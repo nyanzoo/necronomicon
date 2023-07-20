@@ -2,18 +2,18 @@ use std::io::{Read, Write};
 
 use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
-use super::PeekAck;
+use super::DeleteAck;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(C)]
-pub struct Peek {
+pub struct Delete {
     pub(crate) header: Header,
     pub(crate) path: String,
 }
 
-impl Peek {
+impl Delete {
     pub fn new(header: Header, path: String) -> Self {
-        assert_eq!(header.kind(), Kind::Peek);
+        assert_eq!(header.kind(), Kind::DeleteQueue);
 
         Self { header, path }
     }
@@ -26,24 +26,32 @@ impl Peek {
         &self.path
     }
 
-    pub fn ack(self, value: Vec<u8>) -> PeekAck {
-        PeekAck {
-            header: Header::new(Kind::PeekAck, self.header.version(), self.header.uuid()),
+    pub fn ack(self, value: Vec<u8>) -> DeleteAck {
+        DeleteAck {
+            header: Header::new(
+                Kind::DeleteQueueAck,
+                self.header.version(),
+                self.header.uuid(),
+            ),
             response_code: SUCCESS,
             value,
         }
     }
 
-    pub fn nack(self, response_code: u8) -> PeekAck {
-        PeekAck {
-            header: Header::new(Kind::PeekAck, self.header.version(), self.header.uuid()),
+    pub fn nack(self, response_code: u8) -> DeleteAck {
+        DeleteAck {
+            header: Header::new(
+                Kind::DeleteQueueAck,
+                self.header.version(),
+                self.header.uuid(),
+            ),
             response_code,
             value: Vec::new(),
         }
     }
 }
 
-impl<R> PartialDecode<R> for Peek
+impl<R> PartialDecode<R> for Delete
 where
     R: Read,
 {
@@ -51,7 +59,7 @@ where
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::Peek);
+        assert_eq!(header.kind(), Kind::DeleteQueue);
 
         let path = String::decode(reader)?;
 
@@ -59,7 +67,7 @@ where
     }
 }
 
-impl<W> Encode<W> for Peek
+impl<W> Encode<W> for Delete
 where
     W: Write,
 {
@@ -75,13 +83,13 @@ where
 mod test {
     use crate::{tests::test_encode_decode_packet, Kind};
 
-    use super::Peek;
+    use super::Delete;
 
     #[test]
     fn test_encode_decode() {
         test_encode_decode_packet!(
-            Kind::Peek,
-            Peek {
+            Kind::DeleteQueue,
+            Delete {
                 path: "test".to_string(),
             }
         );

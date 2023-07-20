@@ -56,23 +56,18 @@ impl Ack for LenAck {
 
 #[cfg(test)]
 mod test {
-    use crate::{header::Kind, Decode, Encode, Header, PartialDecode};
+    use crate::{tests::test_encode_decode_packet, Kind};
 
     use super::LenAck;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::LenAck, 123, 456);
-        let mut buf = Vec::new();
-        let len = LenAck {
-            header,
-            response_code: 0,
-            len: 123,
-        };
-        len.encode(&mut buf).unwrap();
-        let mut buf = buf.as_slice();
-        let header = Header::decode(&mut buf).unwrap();
-        let decoded = LenAck::decode(header, &mut buf).unwrap();
-        assert_eq!(len, decoded);
+        test_encode_decode_packet!(
+            Kind::LenAck,
+            LenAck {
+                response_code: 0,
+                len: 123,
+            }
+        );
     }
 }

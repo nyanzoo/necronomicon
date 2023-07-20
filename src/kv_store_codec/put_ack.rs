@@ -52,22 +52,12 @@ impl Ack for PutAck {
 
 #[cfg(test)]
 mod test {
-    use crate::{Decode, Encode, Header, Kind, PartialDecode};
+    use crate::{tests::test_encode_decode_packet, Kind};
 
     use super::PutAck;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::PutAck, 123, 456);
-        let mut buf = Vec::new();
-        let put_ack = PutAck {
-            header,
-            response_code: 0,
-        };
-        put_ack.encode(&mut buf).unwrap();
-        let mut buf = buf.as_slice();
-        let header = Header::decode(&mut buf).unwrap();
-        let decoded = PutAck::decode(header, &mut buf).unwrap();
-        assert_eq!(put_ack, decoded);
+        test_encode_decode_packet!(Kind::PutAck, PutAck { response_code: 0 });
     }
 }

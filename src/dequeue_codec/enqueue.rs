@@ -86,23 +86,18 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{header::Kind, Decode, Encode, Header, PartialDecode};
+    use crate::{tests::test_encode_decode_packet, Kind};
 
     use super::Enqueue;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::Enqueue, 123, 456);
-        let mut buf = Vec::new();
-        let enqueue = Enqueue {
-            header,
-            path: "test".to_string(),
-            value: vec![1, 2, 3],
-        };
-        enqueue.encode(&mut buf).unwrap();
-        let mut buf = buf.as_slice();
-        let header = Header::decode(&mut buf).unwrap();
-        let decoded = Enqueue::decode(header, &mut buf).unwrap();
-        assert_eq!(enqueue, decoded);
+        test_encode_decode_packet!(
+            Kind::Enqueue,
+            Enqueue {
+                path: "test".to_string(),
+                value: vec![1, 2, 3],
+            }
+        );
     }
 }

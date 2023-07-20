@@ -8,26 +8,20 @@ use super::DeleteAck;
 #[repr(C)]
 pub struct Delete {
     pub(crate) header: Header,
-    pub(crate) path: String,
-    pub(crate) key: String,
+    pub(crate) key: Vec<u8>,
 }
 
 impl Delete {
-    pub fn new(header: Header, path: String, key: String) -> Self {
+    pub fn new(header: Header, key: Vec<u8>) -> Self {
         assert_eq!(header.kind(), Kind::Delete);
 
-        Self { header, path, key }
+        Self { header, key }
     }
 
     pub fn header(&self) -> Header {
         self.header
     }
-
-    pub fn path(&self) -> &str {
-        &self.path
-    }
-
-    pub fn key(&self) -> &str {
+    pub fn key(&self) -> &[u8] {
         &self.key
     }
 
@@ -56,10 +50,9 @@ where
     {
         assert_eq!(header.kind(), Kind::Delete);
 
-        let path = String::decode(reader)?;
-        let key = String::decode(reader)?;
+        let key = Vec::decode(reader)?;
 
-        Ok(Self { header, path, key })
+        Ok(Self { header, key })
     }
 }
 
@@ -69,7 +62,6 @@ where
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
-        self.path.encode(writer)?;
         self.key.encode(writer)?;
 
         Ok(())
@@ -78,6 +70,7 @@ where
 
 #[cfg(test)]
 mod test {
+
     use crate::{Decode, Encode, Header, Kind, PartialDecode};
 
     use super::Delete;
@@ -88,8 +81,7 @@ mod test {
         let mut buf = Vec::new();
         let delete = Delete {
             header,
-            path: "test".to_string(),
-            key: "test".to_string(),
+            key: vec![1, 2, 3],
         };
         delete.encode(&mut buf).unwrap();
         let mut buf = buf.as_slice();

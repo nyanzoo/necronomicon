@@ -52,22 +52,12 @@ impl Ack for DeleteAck {
 
 #[cfg(test)]
 mod test {
-    use crate::{Decode, Encode, Header, Kind, PartialDecode};
+    use crate::{tests::test_encode_decode_packet, Kind};
 
     use super::DeleteAck;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::DeleteAck, 123, 456);
-        let mut buf = Vec::new();
-        let delete_ack = DeleteAck {
-            header,
-            response_code: 0,
-        };
-        delete_ack.encode(&mut buf).unwrap();
-        let mut buf = buf.as_slice();
-        let header = Header::decode(&mut buf).unwrap();
-        let decoded = DeleteAck::decode(header, &mut buf).unwrap();
-        assert_eq!(delete_ack, decoded);
+        test_encode_decode_packet!(Kind::DeleteAck, DeleteAck { response_code: 0 });
     }
 }

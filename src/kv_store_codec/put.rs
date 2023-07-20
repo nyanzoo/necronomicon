@@ -8,32 +8,22 @@ use super::PutAck;
 #[repr(C)]
 pub struct Put {
     pub(crate) header: Header,
-    pub(crate) path: String,
-    pub(crate) key: String,
+    pub(crate) key: Vec<u8>,
     pub(crate) value: Vec<u8>,
 }
 
 impl Put {
-    pub fn new(header: Header, path: String, key: String, value: Vec<u8>) -> Self {
+    pub fn new(header: Header, key: Vec<u8>, value: Vec<u8>) -> Self {
         assert_eq!(header.kind(), Kind::Put);
 
-        Self {
-            header,
-            path,
-            key,
-            value,
-        }
+        Self { header, key, value }
     }
 
     pub fn header(&self) -> Header {
         self.header
     }
 
-    pub fn path(&self) -> &str {
-        &self.path
-    }
-
-    pub fn key(&self) -> &str {
+    pub fn key(&self) -> &[u8] {
         &self.key
     }
 
@@ -66,16 +56,10 @@ where
     {
         assert_eq!(header.kind(), Kind::Put);
 
-        let path = String::decode(reader)?;
-        let key = String::decode(reader)?;
+        let key = Vec::decode(reader)?;
         let value = Vec::decode(reader)?;
 
-        Ok(Self {
-            header,
-            path,
-            key,
-            value,
-        })
+        Ok(Self { header, key, value })
     }
 }
 
@@ -85,7 +69,6 @@ where
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
-        self.path.encode(writer)?;
         self.key.encode(writer)?;
         self.value.encode(writer)?;
 
@@ -95,24 +78,18 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{Decode, Encode, Header, Kind, PartialDecode};
+    use crate::{tests::test_encode_decode_packet, Kind};
 
     use super::Put;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::Put, 123, 456);
-        let mut buf = Vec::new();
-        let put = Put {
-            header,
-            path: "test".to_string(),
-            key: "test".to_string(),
-            value: vec![1, 2, 3],
-        };
-        put.encode(&mut buf).unwrap();
-        let mut buf = buf.as_slice();
-        let header = Header::decode(&mut buf).unwrap();
-        let decoded = Put::decode(header, &mut buf).unwrap();
-        assert_eq!(put, decoded);
+        test_encode_decode_packet!(
+            Kind::Put,
+            Put {
+                key: vec![1, 2, 3],
+                value: vec![1, 2, 3],
+            }
+        );
     }
 }

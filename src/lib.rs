@@ -1,10 +1,16 @@
 use std::io::{Read, Write};
 
 mod codes;
-pub use codes::{SERVER_BUSY, SUCCESS};
+pub use codes::{
+    FAILED_TO_PUSH_TO_TRANSACTION_LOG, INTERNAL_ERROR, KEY_ALREADY_EXISTS, KEY_DOES_NOT_EXIST,
+    QUEUE_ALREADY_EXISTS, QUEUE_DOES_NOT_EXIST, QUEUE_EMPTY, QUEUE_FULL, SERVER_BUSY, SUCCESS,
+};
 
 pub mod dequeue_codec;
-use dequeue_codec::{Dequeue, DequeueAck, Enqueue, EnqueueAck, Len, LenAck, Peek, PeekAck};
+use dequeue_codec::{
+    Create, CreateAck, Delete as DeleteQueue, DeleteAck as DeleteQueueAck, Dequeue, DequeueAck,
+    Enqueue, EnqueueAck, Len, LenAck, Peek, PeekAck,
+};
 
 mod error;
 pub use error::Error;
@@ -29,6 +35,10 @@ pub enum Packet {
     PeekAck(PeekAck),
     Len(Len),
     LenAck(LenAck),
+    CreateQueue(Create),
+    CreateQueueAck(CreateAck),
+    DeleteQueue(DeleteQueue),
+    DeleteQueueAck(DeleteQueueAck),
 
     // kv store
     Put(Put),
@@ -55,6 +65,8 @@ impl Packet {
             Packet::Dequeue(this) => Some(Packet::DequeueAck(this.nack(response_code))),
             Packet::Peek(this) => Some(Packet::PeekAck(this.nack(response_code))),
             Packet::Len(this) => Some(Packet::LenAck(this.nack(response_code))),
+            Packet::CreateQueue(this) => Some(Packet::CreateQueueAck(this.nack(response_code))),
+            Packet::DeleteQueue(this) => Some(Packet::DeleteQueueAck(this.nack(response_code))),
 
             // kv store
             Packet::Put(this) => Some(Packet::PutAck(this.nack(response_code))),
@@ -103,6 +115,10 @@ where
         Kind::PeekAck => Packet::PeekAck(PeekAck::decode(header, reader)?),
         Kind::Len => Packet::Len(Len::decode(header, reader)?),
         Kind::LenAck => Packet::LenAck(LenAck::decode(header, reader)?),
+        Kind::CreateQueue => Packet::CreateQueue(Create::decode(header, reader)?),
+        Kind::CreateQueueAck => Packet::CreateQueueAck(CreateAck::decode(header, reader)?),
+        Kind::DeleteQueue => Packet::DeleteQueue(DeleteQueue::decode(header, reader)?),
+        Kind::DeleteQueueAck => Packet::DeleteQueueAck(DeleteQueueAck::decode(header, reader)?),
 
         // kv store messages
         Kind::Put => Packet::Put(Put::decode(header, reader)?),
@@ -124,7 +140,15 @@ where
     Ok(packet)
 }
 
-trait Decode<R>
+pub fn full_decode<R>(reader: &mut R) -> Result<Packet, Error>
+where
+    R: Read,
+{
+    let header = Header::decode(reader)?;
+    partial_decode(header, reader)
+}
+
+pub trait Decode<R>
 where
     R: Read,
 {
@@ -316,10 +340,54 @@ where
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use std::{fmt::Debug, io::Cursor};
 
     use super::{Decode, Encode};
+
+    // macro for testing encode/decode
+    #[cfg(test)]
+    macro_rules! test_encode_decode_packet {
+        // Multiple fields
+        (
+            $kind:expr,
+            $struct:ty {
+                $($i:ident: $v:expr,)+
+            }
+        ) => {
+            use crate::{Decode, Encode, Header, PartialDecode};
+
+            type T = $struct;
+            let header = Header::new($kind, 123, 456);
+            let mut bytes = vec![];
+            let packet = T { header, $($i: $v),+ };
+            packet.encode(&mut bytes).unwrap();
+            let mut slice = bytes.as_slice();
+            let header = Header::decode(&mut slice).unwrap();
+            let decoded = T::decode(header, &mut slice).unwrap();
+            assert_eq!(packet, decoded);
+        };
+        // Single field
+        (
+            $kind:expr,
+            $struct:ty {
+                $i:ident: $v:expr
+            }
+        ) => {
+            use crate::{Decode, Encode, Header, PartialDecode};
+
+            type T = $struct;
+            let header = Header::new($kind, 123, 456);
+            let mut bytes = vec![];
+            let packet = T { header, $i: $v };
+            packet.encode(&mut bytes).unwrap();
+            let mut slice = bytes.as_slice();
+            let header = Header::decode(&mut slice).unwrap();
+            let decoded = T::decode(header, &mut slice).unwrap();
+            assert_eq!(packet, decoded);
+        };
+    }
+    pub(crate) use test_encode_decode_packet;
 
     #[test_case::test_case(1u8; "u8")]
     #[test_case::test_case(1u16; "u16")]

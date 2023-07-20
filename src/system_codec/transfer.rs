@@ -74,24 +74,19 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{system_codec::Position, Decode, Encode, Header, Kind, PartialDecode};
+    use crate::{system_codec::Position, tests::test_encode_decode_packet, Kind};
 
     use super::Transfer;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::Transfer, 123, 456);
-        let mut buf = Vec::new();
-        let transfer = Transfer {
-            header,
-            candidate: Position::Head {
-                next: "next".to_owned(),
-            },
-        };
-        transfer.encode(&mut buf).unwrap();
-        let mut buf = buf.as_slice();
-        let header = Header::decode(&mut buf).unwrap();
-        let decoded = Transfer::decode(header, &mut buf).unwrap();
-        assert_eq!(transfer, decoded);
+        test_encode_decode_packet!(
+            Kind::Transfer,
+            Transfer {
+                candidate: Position::Head {
+                    next: "next".to_owned(),
+                }
+            }
+        );
     }
 }
