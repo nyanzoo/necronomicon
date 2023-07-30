@@ -2,17 +2,17 @@ use std::io::{Read, Write};
 
 use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
-use super::DeleteAck;
+use super::{DeleteAck, Key};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(C)]
 pub struct Delete {
     pub(crate) header: Header,
-    pub(crate) key: Vec<u8>,
+    pub(crate) key: Key,
 }
 
 impl Delete {
-    pub fn new(header: Header, key: Vec<u8>) -> Self {
+    pub fn new(header: Header, key: Key) -> Self {
         assert_eq!(header.kind(), Kind::Delete);
 
         Self { header, key }
@@ -21,7 +21,7 @@ impl Delete {
     pub fn header(&self) -> Header {
         self.header
     }
-    pub fn key(&self) -> &[u8] {
+    pub fn key(&self) -> &Key {
         &self.key
     }
 
@@ -50,7 +50,7 @@ where
     {
         assert_eq!(header.kind(), Kind::Delete);
 
-        let key = Vec::decode(reader)?;
+        let key = Key::decode(reader)?;
 
         Ok(Self { header, key })
     }
@@ -71,22 +71,12 @@ where
 #[cfg(test)]
 mod test {
 
-    use crate::{Decode, Encode, Header, Kind, PartialDecode};
+    use crate::{kv_store_codec::TEST_KEY, tests::test_encode_decode_packet, Kind};
 
     use super::Delete;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::Delete, 123, 456);
-        let mut buf = Vec::new();
-        let delete = Delete {
-            header,
-            key: vec![1, 2, 3],
-        };
-        delete.encode(&mut buf).unwrap();
-        let mut buf = buf.as_slice();
-        let header = Header::decode(&mut buf).unwrap();
-        let decoded = Delete::decode(header, &mut buf).unwrap();
-        assert_eq!(delete, decoded);
+        test_encode_decode_packet!(Kind::Delete, Delete { key: TEST_KEY });
     }
 }

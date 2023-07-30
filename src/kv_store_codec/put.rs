@@ -2,18 +2,18 @@ use std::io::{Read, Write};
 
 use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
-use super::PutAck;
+use super::{Key, PutAck};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(C)]
 pub struct Put {
     pub(crate) header: Header,
-    pub(crate) key: Vec<u8>,
+    pub(crate) key: Key,
     pub(crate) value: Vec<u8>,
 }
 
 impl Put {
-    pub fn new(header: Header, key: Vec<u8>, value: Vec<u8>) -> Self {
+    pub fn new(header: Header, key: Key, value: Vec<u8>) -> Self {
         assert_eq!(header.kind(), Kind::Put);
 
         Self { header, key, value }
@@ -23,7 +23,7 @@ impl Put {
         self.header
     }
 
-    pub fn key(&self) -> &[u8] {
+    pub fn key(&self) -> &Key {
         &self.key
     }
 
@@ -56,7 +56,7 @@ where
     {
         assert_eq!(header.kind(), Kind::Put);
 
-        let key = Vec::decode(reader)?;
+        let key = Key::decode(reader)?;
         let value = Vec::decode(reader)?;
 
         Ok(Self { header, key, value })
@@ -78,7 +78,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::test_encode_decode_packet, Kind};
+    use crate::{kv_store_codec::TEST_KEY, tests::test_encode_decode_packet, Kind};
 
     use super::Put;
 
@@ -87,7 +87,7 @@ mod test {
         test_encode_decode_packet!(
             Kind::Put,
             Put {
-                key: vec![1, 2, 3],
+                key: TEST_KEY,
                 value: vec![1, 2, 3],
             }
         );

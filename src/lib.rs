@@ -1,3 +1,5 @@
+#![cfg_attr(nightly, feature(no_coverage))]
+
 use std::io::{Read, Write};
 
 mod codes;
@@ -328,6 +330,32 @@ where
 }
 
 impl<W> Encode<W> for u64
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
+        writer
+            .write_all(&self.to_be_bytes())
+            .map_err(Error::Encode)?;
+        Ok(())
+    }
+}
+
+impl<R> Decode<R> for usize
+where
+    R: Read,
+{
+    fn decode(reader: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes = [0; 8];
+        reader.read_exact(&mut bytes).map_err(Error::Decode)?;
+        Ok(usize::from_be_bytes(bytes))
+    }
+}
+
+impl<W> Encode<W> for usize
 where
     W: Write,
 {

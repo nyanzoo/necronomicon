@@ -9,13 +9,18 @@ use super::CreateAck;
 pub struct Create {
     pub(crate) header: Header,
     pub(crate) path: String,
+    pub(crate) node_size: u64,
 }
 
 impl Create {
-    pub fn new(header: Header, path: String) -> Self {
+    pub fn new(header: Header, path: String, node_size: u64) -> Self {
         assert_eq!(header.kind(), Kind::CreateQueue);
 
-        Self { header, path }
+        Self {
+            header,
+            path,
+            node_size,
+        }
     }
 
     pub fn header(&self) -> Header {
@@ -26,7 +31,11 @@ impl Create {
         &self.path
     }
 
-    pub fn ack(self, value: Vec<u8>) -> CreateAck {
+    pub fn node_size(&self) -> u64 {
+        self.node_size
+    }
+
+    pub fn ack(self) -> CreateAck {
         CreateAck {
             header: Header::new(
                 Kind::CreateQueueAck,
@@ -34,7 +43,6 @@ impl Create {
                 self.header.uuid(),
             ),
             response_code: SUCCESS,
-            value,
         }
     }
 
@@ -46,7 +54,6 @@ impl Create {
                 self.header.uuid(),
             ),
             response_code,
-            value: Vec::new(),
         }
     }
 }
@@ -62,8 +69,9 @@ where
         assert_eq!(header.kind(), Kind::CreateQueue);
 
         let path = String::decode(reader)?;
+        let node_size = u64::decode(reader)?;
 
-        Ok(Self { header, path })
+        Ok(Self { header, path, node_size })
     }
 }
 
@@ -74,6 +82,7 @@ where
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
         self.path.encode(writer)?;
+        self.node_size.encode(writer)?;
 
         Ok(())
     }
@@ -91,6 +100,7 @@ mod test {
             Kind::CreateQueue,
             Create {
                 path: "test".to_string(),
+                node_size: 1024,
             }
         );
     }

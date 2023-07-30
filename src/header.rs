@@ -201,6 +201,7 @@ mod test {
 
     use super::Header;
 
+    #[cfg_attr(nightly, no_coverage)]
     #[test_case(0, 0, 0; "zero")]
     #[test_case(1, 1, 1; "one")]
     #[test_case(2, 2, 2; "two")]

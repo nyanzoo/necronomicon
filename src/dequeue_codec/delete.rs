@@ -26,7 +26,7 @@ impl Delete {
         &self.path
     }
 
-    pub fn ack(self, value: Vec<u8>) -> DeleteAck {
+    pub fn ack(self) -> DeleteAck {
         DeleteAck {
             header: Header::new(
                 Kind::DeleteQueueAck,
@@ -34,7 +34,6 @@ impl Delete {
                 self.header.uuid(),
             ),
             response_code: SUCCESS,
-            value,
         }
     }
 
@@ -46,7 +45,6 @@ impl Delete {
                 self.header.uuid(),
             ),
             response_code,
-            value: Vec::new(),
         }
     }
 }
