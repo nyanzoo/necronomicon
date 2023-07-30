@@ -26,8 +26,8 @@ pub enum Error {
     #[error("io err: {0}")]
     Io(#[from] std::io::Error),
 
-    #[error("owned acquire {acquire} > capacity {capacity}")]
-    OwnedRemaining { acquire: usize, capacity: usize },
+    #[error("io err: {0}")]
+    Io(#[from] std::io::Error),
 
     #[error("bad position: {0}")]
     SystemBadPosition(u8),
