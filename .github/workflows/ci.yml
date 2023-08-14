@@ -117,5 +117,5 @@ jobs:
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
         with:
-          token: ${{secrets.CODECOV_TOKEN}} # not required for public repos
+          token: 2af9f1f3-cf27-4fb5-b005-509810b6e72e # apparently cannot pull secrets from repo???
           fail_ci_if_error: true
