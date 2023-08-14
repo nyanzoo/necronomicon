@@ -58,11 +58,6 @@ mod tests {
 
     #[test]
     fn test_encode_decode() {
-        test_encode_decode_packet!(
-            Kind::CreateQueueAck,
-            CreateAck {
-                response_code: 0,
-            }
-        );
+        test_encode_decode_packet!(Kind::CreateQueueAck, CreateAck { response_code: 0 });
     }
 }

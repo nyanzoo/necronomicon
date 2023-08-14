@@ -71,7 +71,11 @@ where
         let path = String::decode(reader)?;
         let node_size = u64::decode(reader)?;
 
-        Ok(Self { header, path, node_size })
+        Ok(Self {
+            header,
+            path,
+            node_size,
+        })
     }
 }
 
