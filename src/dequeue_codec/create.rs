@@ -2,24 +2,24 @@ use std::io::{Read, Write};
 
 use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
-use super::EnqueueAck;
+use super::CreateAck;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(C)]
-pub struct Enqueue {
+pub struct Create {
     pub(crate) header: Header,
     pub(crate) path: String,
-    pub(crate) value: Vec<u8>,
+    pub(crate) node_size: u64,
 }
 
-impl Enqueue {
-    pub fn new(header: Header, path: String, value: Vec<u8>) -> Self {
-        assert_eq!(header.kind(), Kind::Enqueue);
+impl Create {
+    pub fn new(header: Header, path: String, node_size: u64) -> Self {
+        assert_eq!(header.kind(), Kind::CreateQueue);
 
         Self {
             header,
             path,
-            value,
+            node_size,
         }
     }
 
@@ -31,26 +31,34 @@ impl Enqueue {
         &self.path
     }
 
-    pub fn value(&self) -> &[u8] {
-        &self.value
+    pub fn node_size(&self) -> u64 {
+        self.node_size
     }
 
-    pub fn ack(self) -> EnqueueAck {
-        EnqueueAck {
-            header: Header::new(Kind::EnqueueAck, self.header.version(), self.header.uuid()),
+    pub fn ack(self) -> CreateAck {
+        CreateAck {
+            header: Header::new(
+                Kind::CreateQueueAck,
+                self.header.version(),
+                self.header.uuid(),
+            ),
             response_code: SUCCESS,
         }
     }
 
-    pub fn nack(self, response_code: u8) -> EnqueueAck {
-        EnqueueAck {
-            header: Header::new(Kind::EnqueueAck, self.header.version(), self.header.uuid()),
+    pub fn nack(self, response_code: u8) -> CreateAck {
+        CreateAck {
+            header: Header::new(
+                Kind::CreateQueueAck,
+                self.header.version(),
+                self.header.uuid(),
+            ),
             response_code,
         }
     }
 }
 
-impl<R> PartialDecode<R> for Enqueue
+impl<R> PartialDecode<R> for Create
 where
     R: Read,
 {
@@ -58,27 +66,27 @@ where
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::Enqueue);
+        assert_eq!(header.kind(), Kind::CreateQueue);
 
         let path = String::decode(reader)?;
-        let value = Vec::<u8>::decode(reader)?;
+        let node_size = u64::decode(reader)?;
 
         Ok(Self {
             header,
             path,
-            value,
+            node_size,
         })
     }
 }
 
-impl<W> Encode<W> for Enqueue
+impl<W> Encode<W> for Create
 where
     W: Write,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
         self.path.encode(writer)?;
-        self.value.encode(writer)?;
+        self.node_size.encode(writer)?;
 
         Ok(())
     }
@@ -88,15 +96,15 @@ where
 mod test {
     use crate::{tests::test_encode_decode_packet, Kind};
 
-    use super::Enqueue;
+    use super::Create;
 
     #[test]
     fn test_encode_decode() {
         test_encode_decode_packet!(
-            Kind::Enqueue,
-            Enqueue {
+            Kind::CreateQueue,
+            Create {
                 path: "test".to_string(),
-                value: vec![1, 2, 3],
+                node_size: 1024,
             }
         );
     }

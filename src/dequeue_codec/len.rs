@@ -73,22 +73,17 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{header::Kind, Decode, Encode, Header, PartialDecode};
+    use crate::{tests::test_encode_decode_packet, Kind};
 
     use super::Len;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::Len, 123, 456);
-        let mut buf = Vec::new();
-        let len = Len {
-            header,
-            path: "test".to_string(),
-        };
-        len.encode(&mut buf).unwrap();
-        let mut buf = buf.as_slice();
-        let header = Header::decode(&mut buf).unwrap();
-        let decoded = Len::decode(header, &mut buf).unwrap();
-        assert_eq!(len, decoded);
+        test_encode_decode_packet!(
+            Kind::Len,
+            Len {
+                path: "test".to_string(),
+            }
+        );
     }
 }

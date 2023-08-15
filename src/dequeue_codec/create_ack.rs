@@ -4,12 +4,12 @@ use crate::{Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(C)]
-pub struct DeleteAck {
+pub struct CreateAck {
     pub(crate) header: Header,
     pub(crate) response_code: u8,
 }
 
-impl<R> PartialDecode<R> for DeleteAck
+impl<R> PartialDecode<R> for CreateAck
 where
     R: Read,
 {
@@ -17,7 +17,7 @@ where
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::DeleteAck);
+        assert_eq!(header.kind(), Kind::CreateQueueAck);
 
         let response_code = u8::decode(reader)?;
 
@@ -28,7 +28,7 @@ where
     }
 }
 
-impl<W> Encode<W> for DeleteAck
+impl<W> Encode<W> for CreateAck
 where
     W: Write,
 {
@@ -40,7 +40,7 @@ where
     }
 }
 
-impl Ack for DeleteAck {
+impl Ack for CreateAck {
     fn header(&self) -> &Header {
         &self.header
     }
@@ -51,21 +51,21 @@ impl Ack for DeleteAck {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::{
         tests::{test_ack_packet, test_encode_decode_packet},
         Kind,
     };
 
-    use super::DeleteAck;
+    use super::CreateAck;
 
     #[test]
     fn test_encode_decode() {
-        test_encode_decode_packet!(Kind::DeleteAck, DeleteAck { response_code: 0 });
+        test_encode_decode_packet!(Kind::CreateQueueAck, CreateAck { response_code: 0 });
     }
 
     #[test]
     fn test_ack() {
-        test_ack_packet!(Kind::DeleteAck, DeleteAck { response_code: 0 });
+        test_ack_packet!(Kind::CreateQueueAck, CreateAck { response_code: 0 });
     }
 }

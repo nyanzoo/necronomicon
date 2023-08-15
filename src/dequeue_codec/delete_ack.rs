@@ -17,7 +17,7 @@ where
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::DeleteAck);
+        assert_eq!(header.kind(), Kind::DeleteQueueAck);
 
         let response_code = u8::decode(reader)?;
 
@@ -51,7 +51,7 @@ impl Ack for DeleteAck {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::{
         tests::{test_ack_packet, test_encode_decode_packet},
         Kind,
@@ -61,11 +61,11 @@ mod test {
 
     #[test]
     fn test_encode_decode() {
-        test_encode_decode_packet!(Kind::DeleteAck, DeleteAck { response_code: 0 });
+        test_encode_decode_packet!(Kind::DeleteQueueAck, DeleteAck { response_code: 0 });
     }
 
     #[test]
     fn test_ack() {
-        test_ack_packet!(Kind::DeleteAck, DeleteAck { response_code: 0 });
+        test_ack_packet!(Kind::DeleteQueueAck, DeleteAck { response_code: 0 });
     }
 }

@@ -56,23 +56,32 @@ impl Ack for DequeueAck {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Decode, Encode, Header, Kind, PartialDecode};
+    use crate::{
+        tests::{test_ack_packet, test_encode_decode_packet},
+        Kind,
+    };
 
     use super::DequeueAck;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::DequeueAck, 123, 456);
-        let mut buf = Vec::new();
-        let dequeue_ack = DequeueAck {
-            header,
-            response_code: 0,
-            value: vec![1, 2, 3],
-        };
-        dequeue_ack.encode(&mut buf).unwrap();
-        let mut buf = buf.as_slice();
-        let header = Header::decode(&mut buf).unwrap();
-        let decoded = DequeueAck::decode(header, &mut buf).unwrap();
-        assert_eq!(dequeue_ack, decoded);
+        test_encode_decode_packet!(
+            Kind::DequeueAck,
+            DequeueAck {
+                response_code: 0,
+                value: vec![1, 2, 3],
+            }
+        );
+    }
+
+    #[test]
+    fn test_ack() {
+        test_ack_packet!(
+            Kind::DequeueAck,
+            DequeueAck {
+                response_code: 0,
+                value: vec![1, 2, 3],
+            }
+        );
     }
 }

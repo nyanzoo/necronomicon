@@ -67,24 +67,19 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{system_codec::Position, Decode, Encode, Header, Kind, PartialDecode};
+    use crate::{system_codec::Position, tests::test_encode_decode_packet, Kind};
 
     use super::Join;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::Join, 123, 456);
-        let mut buf = Vec::new();
-        let join = Join {
-            header,
-            position: Position::Tail {
-                frontend: "fe".to_owned(),
-            },
-        };
-        join.encode(&mut buf).unwrap();
-        let mut buf = buf.as_slice();
-        let header = Header::decode(&mut buf).unwrap();
-        let decoded = Join::decode(header, &mut buf).unwrap();
-        assert_eq!(join, decoded);
+        test_encode_decode_packet!(
+            Kind::Join,
+            Join {
+                position: Position::Tail {
+                    frontend: "fe".to_owned(),
+                },
+            }
+        );
     }
 }

@@ -52,22 +52,20 @@ impl Ack for JoinAck {
 
 #[cfg(test)]
 mod test {
-    use crate::{Decode, Encode, Header, Kind, PartialDecode};
+    use crate::{
+        tests::{test_ack_packet, test_encode_decode_packet},
+        Kind,
+    };
 
     use super::JoinAck;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::JoinAck, 123, 456);
-        let mut buf = Vec::new();
-        let join_ack = JoinAck {
-            header,
-            response_code: 0,
-        };
-        join_ack.encode(&mut buf).unwrap();
-        let mut buf = buf.as_slice();
-        let header = Header::decode(&mut buf).unwrap();
-        let decoded = JoinAck::decode(header, &mut buf).unwrap();
-        assert_eq!(join_ack, decoded);
+        test_encode_decode_packet!(Kind::JoinAck, JoinAck { response_code: 0 });
+    }
+
+    #[test]
+    fn test_ack() {
+        test_ack_packet!(Kind::JoinAck, JoinAck { response_code: 0 });
     }
 }

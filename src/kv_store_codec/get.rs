@@ -2,32 +2,27 @@ use std::io::{Read, Write};
 
 use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
-use super::GetAck;
+use super::{GetAck, Key};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(C)]
 pub struct Get {
     pub(crate) header: Header,
-    pub(crate) path: String,
-    pub(crate) key: String,
+    pub(crate) key: Key,
 }
 
 impl Get {
-    pub fn new(header: Header, path: String, key: String) -> Self {
+    pub fn new(header: Header, key: Key) -> Self {
         assert_eq!(header.kind(), Kind::Get);
 
-        Self { header, path, key }
+        Self { header, key }
     }
 
     pub fn header(&self) -> Header {
         self.header
     }
 
-    pub fn path(&self) -> &str {
-        &self.path
-    }
-
-    pub fn key(&self) -> &str {
+    pub fn key(&self) -> &Key {
         &self.key
     }
 
@@ -58,10 +53,9 @@ where
     {
         assert_eq!(header.kind(), Kind::Get);
 
-        let path = String::decode(reader)?;
-        let key = String::decode(reader)?;
+        let key = Key::decode(reader)?;
 
-        Ok(Self { header, path, key })
+        Ok(Self { header, key })
     }
 }
 
@@ -71,7 +65,6 @@ where
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
-        self.path.encode(writer)?;
         self.key.encode(writer)?;
 
         Ok(())
@@ -80,23 +73,12 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{Decode, Encode, Header, Kind, PartialDecode};
+    use crate::{kv_store_codec::TEST_KEY, tests::test_encode_decode_packet, Kind};
 
     use super::Get;
 
     #[test]
     fn test_encode_decode() {
-        let header = Header::new(Kind::Get, 123, 456);
-        let mut buf = Vec::new();
-        let get = Get {
-            header,
-            path: "test".to_string(),
-            key: "test".to_string(),
-        };
-        get.encode(&mut buf).unwrap();
-        let mut buf = buf.as_slice();
-        let header = Header::decode(&mut buf).unwrap();
-        let decoded = Get::decode(header, &mut buf).unwrap();
-        assert_eq!(get, decoded);
+        test_encode_decode_packet!(Kind::Get, Get { key: TEST_KEY });
     }
 }

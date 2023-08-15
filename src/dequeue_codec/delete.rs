@@ -2,39 +2,48 @@ use std::io::{Read, Write};
 
 use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
-use super::{DeleteAck, Key};
+use super::DeleteAck;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(C)]
 pub struct Delete {
     pub(crate) header: Header,
-    pub(crate) key: Key,
+    pub(crate) path: String,
 }
 
 impl Delete {
-    pub fn new(header: Header, key: Key) -> Self {
-        assert_eq!(header.kind(), Kind::Delete);
+    pub fn new(header: Header, path: String) -> Self {
+        assert_eq!(header.kind(), Kind::DeleteQueue);
 
-        Self { header, key }
+        Self { header, path }
     }
 
     pub fn header(&self) -> Header {
         self.header
     }
-    pub fn key(&self) -> &Key {
-        &self.key
+
+    pub fn path(&self) -> &str {
+        &self.path
     }
 
     pub fn ack(self) -> DeleteAck {
         DeleteAck {
-            header: Header::new(Kind::DeleteAck, self.header.version(), self.header.uuid()),
+            header: Header::new(
+                Kind::DeleteQueueAck,
+                self.header.version(),
+                self.header.uuid(),
+            ),
             response_code: SUCCESS,
         }
     }
 
     pub fn nack(self, response_code: u8) -> DeleteAck {
         DeleteAck {
-            header: Header::new(Kind::DeleteAck, self.header.version(), self.header.uuid()),
+            header: Header::new(
+                Kind::DeleteQueueAck,
+                self.header.version(),
+                self.header.uuid(),
+            ),
             response_code,
         }
     }
@@ -48,11 +57,11 @@ where
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::Delete);
+        assert_eq!(header.kind(), Kind::DeleteQueue);
 
-        let key = Key::decode(reader)?;
+        let path = String::decode(reader)?;
 
-        Ok(Self { header, key })
+        Ok(Self { header, path })
     }
 }
 
@@ -62,7 +71,7 @@ where
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
-        self.key.encode(writer)?;
+        self.path.encode(writer)?;
 
         Ok(())
     }
@@ -70,13 +79,17 @@ where
 
 #[cfg(test)]
 mod test {
-
-    use crate::{kv_store_codec::TEST_KEY, tests::test_encode_decode_packet, Kind};
+    use crate::{tests::test_encode_decode_packet, Kind};
 
     use super::Delete;
 
     #[test]
     fn test_encode_decode() {
-        test_encode_decode_packet!(Kind::Delete, Delete { key: TEST_KEY });
+        test_encode_decode_packet!(
+            Kind::DeleteQueue,
+            Delete {
+                path: "test".to_string(),
+            }
+        );
     }
 }
