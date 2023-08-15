@@ -52,12 +52,17 @@ impl Ack for DeleteAck {
 
 #[cfg(test)]
 mod tests {
-    use crate::{tests::test_encode_decode_packet, Kind};
+    use crate::{tests::{test_encode_decode_packet, test_ack_packet}, Kind};
 
     use super::DeleteAck;
 
     #[test]
     fn test_encode_decode() {
         test_encode_decode_packet!(Kind::DeleteQueueAck, DeleteAck { response_code: 0 });
+    }
+
+    #[test]
+    fn test_ack() {
+        test_ack_packet!(Kind::DeleteQueueAck, DeleteAck { response_code: 0 });
     }
 }

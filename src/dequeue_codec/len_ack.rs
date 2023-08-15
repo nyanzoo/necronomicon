@@ -56,13 +56,24 @@ impl Ack for LenAck {
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::test_encode_decode_packet, Kind};
+    use crate::{tests::{test_encode_decode_packet, test_ack_packet}, Kind};
 
     use super::LenAck;
 
     #[test]
     fn test_encode_decode() {
         test_encode_decode_packet!(
+            Kind::LenAck,
+            LenAck {
+                response_code: 0,
+                len: 123,
+            }
+        );
+    }
+
+    #[test]
+    fn test_ack() {
+        test_ack_packet!(
             Kind::LenAck,
             LenAck {
                 response_code: 0,

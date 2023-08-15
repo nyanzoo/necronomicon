@@ -7,9 +7,9 @@ use super::EnqueueAck;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(C)]
 pub struct Enqueue {
-    header: Header,
-    path: String,
-    value: Vec<u8>,
+    pub(crate) header: Header,
+    pub(crate) path: String,
+    pub(crate) value: Vec<u8>,
 }
 
 impl Enqueue {

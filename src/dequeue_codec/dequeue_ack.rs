@@ -56,13 +56,27 @@ impl Ack for DequeueAck {
 
 #[cfg(test)]
 mod tests {
-    use crate::{tests::test_encode_decode_packet, Kind};
+    use crate::{
+        tests::{test_ack_packet, test_encode_decode_packet},
+        Kind,
+    };
 
     use super::DequeueAck;
 
     #[test]
     fn test_encode_decode() {
         test_encode_decode_packet!(
+            Kind::DequeueAck,
+            DequeueAck {
+                response_code: 0,
+                value: vec![1, 2, 3],
+            }
+        );
+    }
+
+    #[test]
+    fn test_ack() {
+        test_ack_packet!(
             Kind::DequeueAck,
             DequeueAck {
                 response_code: 0,
