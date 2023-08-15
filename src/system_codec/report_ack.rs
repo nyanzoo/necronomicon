@@ -68,9 +68,4 @@ mod test {
     fn test_ack() {
         test_ack_packet!(Kind::ReportAck, ReportAck { response_code: 0 });
     }
-
-    #[test]
-    fn test_ack() {
-        test_ack_packet!(Kind::ReportAck, ReportAck { response_code: 0 });
-    }
 }
