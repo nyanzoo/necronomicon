@@ -52,7 +52,10 @@ impl Ack for TransferAck {
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::{test_encode_decode_packet, test_ack_packet}, Kind};
+    use crate::{
+        tests::{test_ack_packet, test_encode_decode_packet},
+        Kind,
+    };
 
     use super::TransferAck;
 
