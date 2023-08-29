@@ -25,8 +25,11 @@ impl Transfer {
         self.header
     }
 
-    pub fn candidate(&self) -> &Position {
-        &self.candidate
+    pub fn candidate(&self) -> &str {
+        match &self.candidate {
+            Position::Candidate { candidate } => &candidate,
+            _ => panic!("{:?} not a candidate", self.candidate),
+        }
     }
 
     pub fn ack(self) -> TransferAck {

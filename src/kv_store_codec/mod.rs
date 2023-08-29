@@ -45,7 +45,7 @@ pub fn is_kv_store_message(kind: u8) -> bool {
 pub struct Key([u8; 32]);
 
 impl Key {
-    pub fn new(key: [u8; 32]) -> Self {
+    pub const fn new(key: [u8; 32]) -> Self {
         Self(key)
     }
 }
