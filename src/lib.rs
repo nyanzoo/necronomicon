@@ -250,9 +250,9 @@ where
     where
         Self: Sized,
     {
-        let mut len = [0; 2];
+        let mut len = [0; 8];
         reader.read_exact(&mut len).map_err(Error::Decode)?;
-        let len = u16::from_be_bytes(len);
+        let len = u64::from_be_bytes(len);
         let mut bytes = vec![0; len as usize];
         reader.read_exact(&mut bytes).map_err(Error::Decode)?;
         Ok(bytes)
@@ -264,7 +264,7 @@ where
     W: Write,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
-        let len = self.len() as u16;
+        let len = self.len() as u64;
         writer
             .write_all(&len.to_be_bytes())
             .map_err(Error::Encode)?;
