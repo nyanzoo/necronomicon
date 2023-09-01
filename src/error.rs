@@ -26,9 +26,6 @@ pub enum Error {
     #[error("io err: {0}")]
     Io(#[from] std::io::Error),
 
-    #[error("io err: {0}")]
-    Io(#[from] std::io::Error),
-
     #[error("bad position: {0}")]
     SystemBadPosition(u8),
 
