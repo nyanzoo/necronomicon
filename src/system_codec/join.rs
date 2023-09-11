@@ -2,24 +2,35 @@ use std::io::{Read, Write};
 
 use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
-use super::{JoinAck, Position};
+use super::{JoinAck, Role};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub struct Join {
     pub(crate) header: Header,
-    pub(crate) position: Position,
+    pub(crate) role: Role,
 }
 
 impl Join {
-    pub fn new(header: Header, position: Position) -> Self {
+    pub fn new(header: Header, role: Role) -> Self {
         assert_eq!(header.kind(), Kind::Join);
 
-        Self { header, position }
+        Self { header, role }
     }
 
     pub fn header(&self) -> Header {
         self.header
+    }
+
+    pub fn role(&self) -> &Role {
+        &self.role
+    }
+
+    pub fn address(&self) -> &str {
+        match &self.role {
+            Role::Backend(addr) => addr,
+            Role::Frontend(addr) => addr,
+        }
     }
 
     pub fn ack(self) -> JoinAck {
@@ -47,9 +58,9 @@ where
     {
         assert_eq!(header.kind(), Kind::Join);
 
-        let position = Position::decode(reader)?;
+        let role = Role::decode(reader)?;
 
-        Ok(Self { header, position })
+        Ok(Self { header, role })
     }
 }
 
@@ -59,7 +70,7 @@ where
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
-        self.position.encode(writer)?;
+        self.role.encode(writer)?;
 
         Ok(())
     }
@@ -67,7 +78,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{system_codec::Position, tests::test_encode_decode_packet, Kind};
+    use crate::{system_codec::Role, tests::test_encode_decode_packet, Kind};
 
     use super::Join;
 
@@ -76,9 +87,7 @@ mod test {
         test_encode_decode_packet!(
             Kind::Join,
             Join {
-                position: Position::Tail {
-                    frontend: "fe".to_owned(),
-                },
+                role: Role::Backend("backend".to_string()),
             }
         );
     }

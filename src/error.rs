@@ -29,6 +29,9 @@ pub enum Error {
     #[error("bad position: {0}")]
     SystemBadPosition(u8),
 
+    #[error("bad role: {0}")]
+    SystemBadRole(u8),
+
     #[error("trailing bytes: {0}")]
     TrailingBytes(usize),
 }

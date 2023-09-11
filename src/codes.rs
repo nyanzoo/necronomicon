@@ -16,4 +16,5 @@ pub const KEY_ALREADY_EXISTS: u8 = 0x16;
 // TODO errors, should be updated later!
 // errors (start at 0xa0)
 pub const FAILED_TO_PUSH_TO_TRANSACTION_LOG: u8 = 0xa0;
+pub const CHAIN_NOT_READY: u8 = 0xb0;
 pub const INTERNAL_ERROR: u8 = 0xff;

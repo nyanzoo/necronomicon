@@ -1,10 +1,10 @@
-mod chain;
+mod report;
 use std::io::{Read, Write};
 
-pub use chain::Chain;
+pub use report::Report;
 
-mod chain_ack;
-pub use chain_ack::ChainAck;
+mod report_ack;
+pub use report_ack::ReportAck;
 
 mod join;
 pub use join::Join;
@@ -17,6 +17,12 @@ pub use transfer::Transfer;
 
 mod transfer_ack;
 pub use transfer_ack::TransferAck;
+
+mod ping;
+pub use ping::Ping;
+
+mod ping_ack;
+pub use ping_ack::PingAck;
 
 use crate::{Decode, Encode};
 
@@ -34,19 +40,80 @@ pub const JOIN_ACK: u8 = START + 3;
 pub const TRANSFER: u8 = START + 4;
 /// An ack for a transfer message.
 pub const TRANSFER_ACK: u8 = START + 5;
+/// For checking liveness
+pub const PING: u8 = START + 6;
+/// Ack for a ping
+pub const PING_ACK: u8 = START + 7;
 
-pub const END: u8 = START + 5;
+pub const END: u8 = START + 7;
 
 pub fn is_system_message(kind: u8) -> bool {
     (START..=END).contains(&kind)
 }
 
+// Role + Address
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Role {
+    Backend(String),  // 1
+    Frontend(String), // 2
+}
+
+impl<W> Encode<W> for Role
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), crate::Error> {
+        match self {
+            Role::Backend(addr) => {
+                1u8.encode(writer)?;
+                addr.encode(writer)?;
+            }
+            Role::Frontend(addr) => {
+                2u8.encode(writer)?;
+                addr.encode(writer)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl<R> Decode<R> for Role
+where
+    R: Read,
+{
+    fn decode(reader: &mut R) -> Result<Self, crate::Error>
+    where
+        Self: Sized,
+    {
+        let kind = u8::decode(reader)?;
+        match kind {
+            1 => Ok(Role::Backend(String::decode(reader)?)),
+            2 => Ok(Role::Frontend(String::decode(reader)?)),
+            _ => Err(crate::Error::SystemBadRole(kind)),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Position {
-    Head { next: String },           // 1
-    Middle { next: String },         // 2
-    Tail { frontend: String },       // 3
-    Candidate { candidate: String }, // 4
+    // Backends
+    Head {
+        next: String,
+    }, // 1
+    Middle {
+        next: String,
+    }, // 2
+    Tail {
+        candidate: Option<String>,
+    }, // 3
+    Candidate, // 4
+
+    // Frontends
+    Frontend {
+        head: Option<String>,
+        tail: Option<String>,
+    }, // 5
 }
 
 impl<W> Encode<W> for Position
@@ -55,6 +122,7 @@ where
 {
     fn encode(&self, writer: &mut W) -> Result<(), crate::Error> {
         match self {
+            // Backends
             Position::Head { next } => {
                 1u8.encode(writer)?;
                 next.encode(writer)?;
@@ -63,13 +131,19 @@ where
                 2u8.encode(writer)?;
                 next.encode(writer)?;
             }
-            Position::Tail { frontend } => {
+            Position::Tail { candidate } => {
                 3u8.encode(writer)?;
-                frontend.encode(writer)?;
-            }
-            Position::Candidate { candidate } => {
-                4u8.encode(writer)?;
                 candidate.encode(writer)?;
+            }
+            Position::Candidate => {
+                4u8.encode(writer)?;
+            }
+
+            // Frontends
+            Position::Frontend { head, tail } => {
+                5u8.encode(writer)?;
+                head.encode(writer)?;
+                tail.encode(writer)?;
             }
         }
 
@@ -87,6 +161,7 @@ where
     {
         let kind = u8::decode(reader)?;
         match kind {
+            // Backends
             1 => {
                 let next = String::decode(reader)?;
                 Ok(Position::Head { next })
@@ -96,13 +171,19 @@ where
                 Ok(Position::Middle { next })
             }
             3 => {
-                let frontend = String::decode(reader)?;
-                Ok(Position::Tail { frontend })
+                let candidate = Option::<String>::decode(reader)?;
+                Ok(Position::Tail { candidate })
             }
-            4 => {
-                let candidate = String::decode(reader)?;
-                Ok(Position::Candidate { candidate })
+            4 => Ok(Position::Candidate),
+
+            // Frontends
+            5 => {
+                let head = Option::<String>::decode(reader)?;
+                let tail = Option::<String>::decode(reader)?;
+                Ok(Position::Frontend { head, tail })
             }
+
+            // Unknown
             _ => Err(crate::Error::SystemBadPosition(kind)),
         }
     }

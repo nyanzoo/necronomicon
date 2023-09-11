@@ -2,23 +2,20 @@ use std::io::{Read, Write};
 
 use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
-use super::{Position, TransferAck};
+use super::TransferAck;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub struct Transfer {
     pub(crate) header: Header,
-    pub(crate) candidate: Position,
+    pub(crate) candidate: String,
 }
 
 impl Transfer {
-    pub fn new(header: Header, position: Position) -> Self {
-        assert_eq!(header.kind(), Kind::Chain);
+    pub fn new(header: Header, candidate: String) -> Self {
+        assert_eq!(header.kind(), Kind::Report);
 
-        Self {
-            header,
-            candidate: position,
-        }
+        Self { header, candidate }
     }
 
     pub fn header(&self) -> Header {
@@ -26,10 +23,7 @@ impl Transfer {
     }
 
     pub fn candidate(&self) -> &str {
-        match &self.candidate {
-            Position::Candidate { candidate } => &candidate,
-            _ => panic!("{:?} not a candidate", self.candidate),
-        }
+        &self.candidate
     }
 
     pub fn ack(self) -> TransferAck {
@@ -57,7 +51,7 @@ where
     {
         assert_eq!(header.kind(), Kind::Transfer);
 
-        let candidate = Position::decode(reader)?;
+        let candidate = String::decode(reader)?;
 
         Ok(Self { header, candidate })
     }
@@ -77,7 +71,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{system_codec::Position, tests::test_encode_decode_packet, Kind};
+    use crate::{tests::test_encode_decode_packet, Kind};
 
     use super::Transfer;
 
@@ -86,9 +80,7 @@ mod test {
         test_encode_decode_packet!(
             Kind::Transfer,
             Transfer {
-                candidate: Position::Head {
-                    next: "next".to_owned(),
-                }
+                candidate: "candidate".to_owned(),
             }
         );
     }

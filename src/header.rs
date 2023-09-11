@@ -36,12 +36,14 @@ pub enum Kind {
     DeleteAck = kv_store_codec::END as isize,
 
     // internal system messages
-    Chain = system_codec::START as isize,
-    ChainAck,
+    Report = system_codec::START as isize,
+    ReportAck,
     Join,
     JoinAck,
     Transfer,
-    TransferAck = system_codec::END as isize,
+    TransferAck,
+    Ping,
+    PingAck = system_codec::END as isize,
 }
 
 impl From<u8> for Kind {
@@ -70,12 +72,14 @@ impl From<u8> for Kind {
             kv_store_codec::DELETE_ACK => Kind::DeleteAck,
 
             // internal system messages
-            system_codec::CHAIN => Kind::Chain,
-            system_codec::CHAIN_ACK => Kind::ChainAck,
+            system_codec::CHAIN => Kind::Report,
+            system_codec::CHAIN_ACK => Kind::ReportAck,
             system_codec::JOIN => Kind::Join,
             system_codec::JOIN_ACK => Kind::JoinAck,
             system_codec::TRANSFER => Kind::Transfer,
             system_codec::TRANSFER_ACK => Kind::TransferAck,
+            system_codec::PING => Kind::Ping,
+            system_codec::PING_ACK => Kind::PingAck,
 
             _ => panic!("invalid kind: {}", value),
         }
@@ -108,12 +112,14 @@ impl From<Kind> for u8 {
             Kind::DeleteAck => kv_store_codec::DELETE_ACK,
 
             // internal system messages
-            Kind::Chain => system_codec::CHAIN,
-            Kind::ChainAck => system_codec::CHAIN_ACK,
+            Kind::Report => system_codec::CHAIN,
+            Kind::ReportAck => system_codec::CHAIN_ACK,
             Kind::Join => system_codec::JOIN,
             Kind::JoinAck => system_codec::JOIN_ACK,
             Kind::Transfer => system_codec::TRANSFER,
             Kind::TransferAck => system_codec::TRANSFER_ACK,
+            Kind::Ping => system_codec::PING,
+            Kind::PingAck => system_codec::PING_ACK,
         }
     }
 }
