@@ -71,6 +71,6 @@ mod test {
 
     #[test]
     fn test_ack() {
-        test_ack_packet!(Kind::ChainAck, ChainAck { response_code: 0 });
+        test_ack_packet!(Kind::ReportAck, ReportAck { response_code: 0 });
     }
 }
