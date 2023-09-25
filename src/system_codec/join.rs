@@ -26,7 +26,7 @@ impl Join {
         &self.role
     }
 
-    pub fn address(&self) -> &str {
+    pub fn addr(&self) -> &str {
         match &self.role {
             Role::Backend(addr) => addr,
             Role::Frontend(addr) => addr,
@@ -87,7 +87,7 @@ mod test {
         test_encode_decode_packet!(
             Kind::Join,
             Join {
-                role: Role::Backend("backend".to_string()),
+                role: Role::Backend("localhost".to_string()),
             }
         );
     }

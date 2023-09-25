@@ -2,7 +2,7 @@ use std::io::{Read, Write};
 
 use crate::{Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub struct DeleteAck {
     pub(crate) header: Header,

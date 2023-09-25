@@ -4,7 +4,7 @@ use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
 use super::LenAck;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub struct Len {
     pub(crate) header: Header,

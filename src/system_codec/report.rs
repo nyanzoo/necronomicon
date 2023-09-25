@@ -2,7 +2,7 @@ use std::io::{Read, Write};
 
 use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
-use super::{ReportAck, Position};
+use super::{Position, ReportAck};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]

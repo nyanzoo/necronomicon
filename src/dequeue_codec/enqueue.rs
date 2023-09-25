@@ -4,7 +4,7 @@ use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
 use super::EnqueueAck;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub struct Enqueue {
     pub(crate) header: Header,

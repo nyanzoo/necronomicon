@@ -2,7 +2,7 @@ use std::io::{Read, Write};
 
 use crate::{Decode, Encode, Error, Header, Kind, PartialDecode};
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub struct EnqueueAck {
     pub(crate) header: Header,

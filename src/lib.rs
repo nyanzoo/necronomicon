@@ -2,6 +2,8 @@
 
 use std::io::{Read, Write};
 
+use log::debug;
+
 mod codes;
 pub use codes::{
     CHAIN_NOT_READY, FAILED_TO_PUSH_TO_TRANSACTION_LOG, INTERNAL_ERROR, KEY_ALREADY_EXISTS,
@@ -146,6 +148,7 @@ pub fn partial_decode<R>(header: Header, reader: &mut R) -> Result<Packet, Error
 where
     R: Read,
 {
+    debug!("partial_decode: {:?}", header);
     let packet = match header.kind() {
         // dequeue messages
         Kind::Enqueue => Packet::Enqueue(Enqueue::decode(header, reader)?),
@@ -213,6 +216,7 @@ where
     W: Write,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
+        debug!("encode: {:?}", self);
         match self {
             // dequeue
             Packet::Enqueue(packet) => packet.encode(writer),
@@ -456,6 +460,32 @@ where
 }
 
 impl<W> Encode<W> for u64
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
+        writer
+            .write_all(&self.to_be_bytes())
+            .map_err(Error::Encode)?;
+        Ok(())
+    }
+}
+
+impl<R> Decode<R> for u128
+where
+    R: Read,
+{
+    fn decode(reader: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes = [0; 16];
+        reader.read_exact(&mut bytes).map_err(Error::Decode)?;
+        Ok(u128::from_be_bytes(bytes))
+    }
+}
+
+impl<W> Encode<W> for u128
 where
     W: Write,
 {
@@ -727,7 +757,7 @@ pub(crate) mod tests {
             }),
             Packet::Join(crate::system_codec::Join {
                 header: Header::new(crate::Kind::Join, 123, 456),
-                role: crate::system_codec::Role::Backend("backend".to_string()),
+                role: crate::system_codec::Role::Backend("foo".to_string()),
             }),
             Packet::JoinAck(crate::system_codec::JoinAck {
                 header: Header::new(crate::Kind::JoinAck, 123, 456),

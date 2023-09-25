@@ -51,7 +51,7 @@ pub fn is_system_message(kind: u8) -> bool {
     (START..=END).contains(&kind)
 }
 
-// Role + Address
+// Role + Identifier
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Role {
     Backend(String),  // 1

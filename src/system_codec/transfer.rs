@@ -13,7 +13,7 @@ pub struct Transfer {
 
 impl Transfer {
     pub fn new(header: Header, candidate: String) -> Self {
-        assert_eq!(header.kind(), Kind::Report);
+        assert_eq!(header.kind(), Kind::Transfer);
 
         Self { header, candidate }
     }
