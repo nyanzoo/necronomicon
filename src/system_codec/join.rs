@@ -26,10 +26,11 @@ impl Join {
         &self.role
     }
 
-    pub fn addr(&self) -> &str {
+    pub fn addr(&self) -> Option<&str> {
         match &self.role {
-            Role::Backend(addr) => addr,
-            Role::Frontend(addr) => addr,
+            Role::Backend(addr) => Some(addr),
+            Role::Frontend(addr) => Some(addr),
+            Role::Observer => None,
         }
     }
 

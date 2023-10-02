@@ -56,6 +56,7 @@ pub fn is_system_message(kind: u8) -> bool {
 pub enum Role {
     Backend(String),  // 1
     Frontend(String), // 2
+    Observer,         // 3
 }
 
 impl<W> Encode<W> for Role
@@ -71,6 +72,9 @@ where
             Role::Frontend(addr) => {
                 2u8.encode(writer)?;
                 addr.encode(writer)?;
+            }
+            Role::Observer => {
+                3u8.encode(writer)?;
             }
         }
 
@@ -114,6 +118,11 @@ pub enum Position {
         head: Option<String>,
         tail: Option<String>,
     }, // 5
+
+    // Observer
+    Observer {
+        chain: Vec<Role>, // head -> tail
+    }, // 6
 }
 
 impl<W> Encode<W> for Position
@@ -144,6 +153,12 @@ where
                 5u8.encode(writer)?;
                 head.encode(writer)?;
                 tail.encode(writer)?;
+            }
+
+            // Observer
+            Position::Observer { chain } => {
+                6u8.encode(writer)?;
+                chain.encode(writer)?;
             }
         }
 

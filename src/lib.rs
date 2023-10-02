@@ -27,7 +27,7 @@ pub mod kv_store_codec;
 use kv_store_codec::{Delete, DeleteAck, Get, GetAck, Put, PutAck};
 
 pub mod system_codec;
-use system_codec::{Join, JoinAck, Ping, PingAck, Report, ReportAck, Transfer, TransferAck};
+use system_codec::{Join, JoinAck, Ping, PingAck, Report, ReportAck, Role, Transfer, TransferAck};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Packet {
@@ -359,6 +359,59 @@ where
             .write_all(&len.to_be_bytes())
             .map_err(Error::Encode)?;
         writer.write_all(self).map_err(Error::Encode)?;
+        Ok(())
+    }
+}
+
+impl<W> Encode<W> for &[u8]
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
+        let len = self.len() as u64;
+        writer
+            .write_all(&len.to_be_bytes())
+            .map_err(Error::Encode)?;
+        writer.write_all(self).map_err(Error::Encode)?;
+        Ok(())
+    }
+}
+
+impl<R> Decode<R> for Vec<Role>
+where
+    R: Read,
+{
+    fn decode(reader: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let mut len = [0; 8];
+        reader.read_exact(&mut len).map_err(Error::Decode)?;
+        let len = u64::from_be_bytes(len) as usize;
+        let mut bytes = Vec::with_capacity(len);
+
+        for i in 0..len {
+            bytes[i] = Role::decode(reader)?;
+        }
+
+        Ok(bytes)
+    }
+}
+
+impl<W> Encode<W> for Vec<Role>
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
+        let len = self.len() as u64;
+        writer
+            .write_all(&len.to_be_bytes())
+            .map_err(Error::Encode)?;
+
+        for role in self {
+            role.encode(writer)?;
+        }
+
         Ok(())
     }
 }
@@ -765,7 +818,8 @@ pub(crate) mod tests {
             }),
             Packet::Transfer(crate::system_codec::Transfer {
                 header: Header::new(crate::Kind::Transfer, 123, 456),
-                candidate: "candidate".to_owned(),
+                path: "/tmp/kitties".to_owned(),
+                content: vec![1, 2, 3],
             }),
             Packet::TransferAck(crate::system_codec::TransferAck {
                 header: Header::new(crate::Kind::TransferAck, 123, 456),

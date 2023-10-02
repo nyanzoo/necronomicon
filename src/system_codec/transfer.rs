@@ -8,22 +8,27 @@ use super::TransferAck;
 #[repr(C)]
 pub struct Transfer {
     pub(crate) header: Header,
-    pub(crate) candidate: String,
+    pub(crate) path: String,
+    pub(crate) content: Vec<u8>,
 }
 
 impl Transfer {
-    pub fn new(header: Header, candidate: String) -> Self {
+    pub fn new(header: Header, path: String, content: Vec<u8>) -> Self {
         assert_eq!(header.kind(), Kind::Transfer);
 
-        Self { header, candidate }
+        Self { header, path, content }
     }
 
     pub fn header(&self) -> Header {
         self.header
     }
 
-    pub fn candidate(&self) -> &str {
-        &self.candidate
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
+    pub fn content(&self) -> &[u8] {
+        &self.content
     }
 
     pub fn ack(self) -> TransferAck {
@@ -51,9 +56,10 @@ where
     {
         assert_eq!(header.kind(), Kind::Transfer);
 
-        let candidate = String::decode(reader)?;
+        let path = String::decode(reader)?;
+        let content = Vec::<u8>::decode(reader)?;
 
-        Ok(Self { header, candidate })
+        Ok(Self { header, path, content })
     }
 }
 
@@ -63,7 +69,8 @@ where
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
-        self.candidate.encode(writer)?;
+        self.path.encode(writer)?;
+        self.content.encode(writer)?;
 
         Ok(())
     }
@@ -80,7 +87,8 @@ mod test {
         test_encode_decode_packet!(
             Kind::Transfer,
             Transfer {
-                candidate: "candidate".to_owned(),
+                path: "/tmp/kitty".to_owned(),
+                content: vec![0x01, 0x02, 0x03, 0x04],
             }
         );
     }
