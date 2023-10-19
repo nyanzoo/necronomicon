@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+use crate::{header::VersionAndUuid, Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
 use super::TransferAck;
 
@@ -13,10 +13,16 @@ pub struct Transfer {
 }
 
 impl Transfer {
-    pub fn new(header: Header, path: String, content: Vec<u8>) -> Self {
-        assert_eq!(header.kind(), Kind::Transfer);
-
-        Self { header, path, content }
+    pub fn new(
+        version_and_uuid: impl Into<VersionAndUuid>,
+        path: String,
+        content: Vec<u8>,
+    ) -> Self {
+        Self {
+            header: version_and_uuid.into().into_header(Kind::Transfer),
+            path,
+            content,
+        }
     }
 
     pub fn header(&self) -> Header {
@@ -59,7 +65,11 @@ where
         let path = String::decode(reader)?;
         let content = Vec::<u8>::decode(reader)?;
 
-        Ok(Self { header, path, content })
+        Ok(Self {
+            header,
+            path,
+            content,
+        })
     }
 }
 

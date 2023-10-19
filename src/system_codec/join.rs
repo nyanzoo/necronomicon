@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+use crate::{header::VersionAndUuid, Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
 use super::{JoinAck, Role};
 
@@ -9,13 +9,23 @@ use super::{JoinAck, Role};
 pub struct Join {
     pub(crate) header: Header,
     pub(crate) role: Role,
+    pub(crate) version: u128,
+    pub(crate) successor_lost: bool,
 }
 
 impl Join {
-    pub fn new(header: Header, role: Role) -> Self {
-        assert_eq!(header.kind(), Kind::Join);
-
-        Self { header, role }
+    pub fn new(
+        version_and_uuid: impl Into<VersionAndUuid>,
+        role: Role,
+        version: u128,
+        successor_lost: bool,
+    ) -> Self {
+        Self {
+            header: version_and_uuid.into().into_header(Kind::Join),
+            role,
+            version,
+            successor_lost,
+        }
     }
 
     pub fn header(&self) -> Header {
@@ -60,8 +70,15 @@ where
         assert_eq!(header.kind(), Kind::Join);
 
         let role = Role::decode(reader)?;
+        let version = u128::decode(reader)?;
+        let successor_lost = u8::decode(reader)? > 0;
 
-        Ok(Self { header, role })
+        Ok(Self {
+            header,
+            role,
+            version,
+            successor_lost,
+        })
     }
 }
 
@@ -72,6 +89,8 @@ where
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
         self.role.encode(writer)?;
+        self.version.encode(writer)?;
+        u8::from(self.successor_lost).encode(writer)?;
 
         Ok(())
     }
@@ -89,6 +108,8 @@ mod test {
             Kind::Join,
             Join {
                 role: Role::Backend("localhost".to_string()),
+                version: 1,
+                successor_lost: false,
             }
         );
     }

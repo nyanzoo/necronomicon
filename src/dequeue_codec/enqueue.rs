@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+use crate::{header::VersionAndUuid, Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
 use super::EnqueueAck;
 
@@ -13,11 +13,9 @@ pub struct Enqueue {
 }
 
 impl Enqueue {
-    pub fn new(header: Header, path: String, value: Vec<u8>) -> Self {
-        assert_eq!(header.kind(), Kind::Enqueue);
-
+    pub fn new(version_and_uuid: impl Into<VersionAndUuid>, path: String, value: Vec<u8>) -> Self {
         Self {
-            header,
+            header: version_and_uuid.into().into_header(Kind::Enqueue),
             path,
             value,
         }

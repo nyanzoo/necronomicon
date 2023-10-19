@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+use crate::{header::VersionAndUuid, Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
 use super::{Position, ReportAck};
 
@@ -12,10 +12,11 @@ pub struct Report {
 }
 
 impl Report {
-    pub fn new(header: Header, position: Position) -> Self {
-        assert_eq!(header.kind(), Kind::Report);
-
-        Self { header, position }
+    pub fn new(version_and_uuid: impl Into<VersionAndUuid>, position: Position) -> Self {
+        Self {
+            header: version_and_uuid.into().into_header(Kind::Report),
+            position,
+        }
     }
 
     pub fn header(&self) -> Header {

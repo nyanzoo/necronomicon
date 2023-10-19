@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::{Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
+use crate::{header::VersionAndUuid, Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
@@ -10,9 +10,9 @@ pub struct JoinAck {
 }
 
 impl JoinAck {
-    pub fn new(header: Header, response_code: u8) -> Self {
+    pub fn new(version_and_uuid: impl Into<VersionAndUuid>, response_code: u8) -> Self {
         Self {
-            header,
+            header: version_and_uuid.into().into_header(Kind::JoinAck),
             response_code,
         }
     }

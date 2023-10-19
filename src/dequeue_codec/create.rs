@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+use crate::{header::VersionAndUuid, Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
 use super::CreateAck;
 
@@ -13,11 +13,9 @@ pub struct Create {
 }
 
 impl Create {
-    pub fn new(header: Header, path: String, node_size: u64) -> Self {
-        assert_eq!(header.kind(), Kind::CreateQueue);
-
+    pub fn new(version_and_uuid: impl Into<VersionAndUuid>, path: String, node_size: u64) -> Self {
         Self {
-            header,
+            header: version_and_uuid.into().into_header(Kind::CreateQueue),
             path,
             node_size,
         }

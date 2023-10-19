@@ -5,6 +5,27 @@ use std::{
 
 use crate::{dequeue_codec, error::Error, kv_store_codec, system_codec, Decode, Encode};
 
+pub struct VersionAndUuid {
+    pub version: u8,
+    pub uuid: u128,
+}
+
+impl VersionAndUuid {
+    pub fn new(version: u8, uuid: u128) -> Self {
+        Self { version, uuid }
+    }
+
+    pub fn into_header(self, kind: impl Into<Kind>) -> Header {
+        Header::new(kind, self.version, self.uuid)
+    }
+}
+
+impl From<(u8, u128)> for VersionAndUuid {
+    fn from((version, uuid): (u8, u128)) -> Self {
+        Self { version, uuid }
+    }
+}
+
 // TODO: need to map these to packet types, also need to do partial
 // decodes of header to get packet type and then decode the rest.
 #[derive(Clone, Copy, PartialEq, Eq)]

@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+use crate::{header::VersionAndUuid, Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
 use super::{DeleteAck, Key};
 
@@ -12,10 +12,11 @@ pub struct Delete {
 }
 
 impl Delete {
-    pub fn new(header: Header, key: Key) -> Self {
-        assert_eq!(header.kind(), Kind::Delete);
-
-        Self { header, key }
+    pub fn new(version_and_uuid: impl Into<VersionAndUuid>, key: Key) -> Self {
+        Self {
+            header: version_and_uuid.into().into_header(Kind::Delete),
+            key,
+        }
     }
 
     pub fn header(&self) -> Header {

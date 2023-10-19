@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::{Encode, Error, Header, Kind, PartialDecode};
+use crate::{header::VersionAndUuid, Encode, Error, Header, Kind, PartialDecode};
 
 use super::PingAck;
 
@@ -11,10 +11,10 @@ pub struct Ping {
 }
 
 impl Ping {
-    pub fn new(header: Header) -> Self {
-        assert_eq!(header.kind(), Kind::Ping);
-
-        Self { header }
+    pub fn new(version_and_uuid: impl Into<VersionAndUuid>) -> Self {
+        Self {
+            header: version_and_uuid.into().into_header(Kind::Ping),
+        }
     }
 
     pub fn header(&self) -> Header {

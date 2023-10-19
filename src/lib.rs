@@ -811,6 +811,8 @@ pub(crate) mod tests {
             Packet::Join(crate::system_codec::Join {
                 header: Header::new(crate::Kind::Join, 123, 456),
                 role: crate::system_codec::Role::Backend("foo".to_string()),
+                version: 1,
+                successor_lost: false,
             }),
             Packet::JoinAck(crate::system_codec::JoinAck {
                 header: Header::new(crate::Kind::JoinAck, 123, 456),
