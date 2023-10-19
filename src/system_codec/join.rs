@@ -36,6 +36,14 @@ impl Join {
         &self.role
     }
 
+    pub fn store_version(&self) -> u128 {
+        self.version
+    }
+
+    pub fn successor_lost(&self) -> bool {
+        self.successor_lost
+    }
+
     pub fn addr(&self) -> Option<&str> {
         match &self.role {
             Role::Backend(addr) => Some(addr),
