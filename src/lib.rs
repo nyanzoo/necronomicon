@@ -390,8 +390,8 @@ where
         let len = u64::from_be_bytes(len) as usize;
         let mut bytes = Vec::with_capacity(len);
 
-        for i in 0..len {
-            bytes[i] = Role::decode(reader)?;
+        for _ in 0..len {
+            bytes.push(Role::decode(reader)?);
         }
 
         Ok(bytes)
@@ -617,6 +617,19 @@ pub(crate) mod tests {
             assert_eq!(ack.header(), &header);
             assert_eq!(ack.response_code(), SUCCESS);
         };
+        // No fields
+        (
+            $kind:expr,
+            $struct:ty {}
+        ) => {
+            use crate::{Ack, Header, SUCCESS};
+
+            type T = $struct;
+            let header = Header::new($kind, 123, 456);
+            let ack = T { header };
+            assert_eq!(ack.header(), &header);
+            assert_eq!(ack.response_code(), SUCCESS);
+        };
     }
     pub(crate) use test_ack_packet;
 
@@ -701,6 +714,8 @@ pub(crate) mod tests {
     #[test_case::test_case(1usize; "usize")]
     #[test_case::test_case("hello".to_string(); "string")]
     #[test_case::test_case(vec![1, 2, 3]; "vec")]
+    #[test_case::test_case(Some(1u8); "option")]
+    #[test_case::test_case(vec![crate::system_codec::Role::Backend("foo".to_string()), crate::system_codec::Role::Observer]; "role")]
     fn test_encode_decode<T>(val: T)
     where
         T: Decode<Cursor<Vec<u8>>> + Encode<Vec<u8>> + Debug + Eq + PartialEq,

@@ -66,3 +66,16 @@ pub const END: u8 = START + 11;
 pub fn is_dequeue_message(kind: u8) -> bool {
     (START..=END).contains(&kind)
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::{END, START};
+
+    #[test]
+    fn is_dequeue_message() {
+        assert!(super::is_dequeue_message(START));
+        assert!(super::is_dequeue_message(END));
+        assert!(!super::is_dequeue_message(END + 1));
+    }
+}

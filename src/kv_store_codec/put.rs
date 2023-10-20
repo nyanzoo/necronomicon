@@ -80,9 +80,29 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{kv_store_codec::TEST_KEY, tests::test_encode_decode_packet, Kind};
+    use crate::{kv_store_codec::TEST_KEY, tests::test_encode_decode_packet, Ack, Kind};
 
     use super::Put;
+
+    #[test]
+    fn test_new() {
+        let put = Put::new((0, 0), TEST_KEY, vec![1, 2, 3]);
+
+        assert_eq!(put.header().kind(), Kind::Put);
+        assert_eq!(put.key(), &TEST_KEY);
+        assert_eq!(put.value(), &[1, 2, 3]);
+    }
+
+    #[test]
+    fn test_ack() {
+        let put = Put::new((0, 0), TEST_KEY, vec![1, 2, 3]);
+
+        let ack = put.clone().ack();
+        assert_eq!(ack.response_code(), crate::SUCCESS);
+
+        let nack = put.nack(crate::INTERNAL_ERROR);
+        assert_eq!(nack.response_code(), crate::INTERNAL_ERROR);
+    }
 
     #[test]
     fn test_encode_decode() {

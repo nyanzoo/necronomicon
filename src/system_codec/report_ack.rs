@@ -54,23 +54,28 @@ impl Ack for ReportAck {
 mod test {
     use crate::{
         tests::{test_ack_packet, test_encode_decode_packet},
-        Kind,
+        Kind, SUCCESS,
     };
 
     use super::ReportAck;
 
     #[test]
     fn test_encode_decode() {
-        test_encode_decode_packet!(Kind::ReportAck, ReportAck { response_code: 0 });
+        test_encode_decode_packet!(
+            Kind::ReportAck,
+            ReportAck {
+                response_code: SUCCESS
+            }
+        );
     }
 
     #[test]
     fn test_ack() {
-        test_ack_packet!(Kind::ReportAck, ReportAck { response_code: 0 });
-    }
-
-    #[test]
-    fn test_ack() {
-        test_ack_packet!(Kind::ReportAck, ReportAck { response_code: 0 });
+        test_ack_packet!(
+            Kind::ReportAck,
+            ReportAck {
+                response_code: SUCCESS
+            }
+        );
     }
 }

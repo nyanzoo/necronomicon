@@ -55,9 +55,26 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::test_encode_decode_packet, Kind};
+    use crate::{tests::test_encode_decode_packet, Ack, Kind, SUCCESS};
 
     use super::Ping;
+
+    #[test]
+    fn test_new() {
+        let ping = Ping::new((1, 2));
+
+        assert_eq!(ping.header().kind(), Kind::Ping);
+        assert_eq!(ping.header().version(), 1);
+        assert_eq!(ping.header().uuid(), 2);
+    }
+
+    #[test]
+    fn test_ack() {
+        let ping = Ping::new((1, 2));
+        let ping_ack = ping.ack();
+
+        assert_eq!(ping_ack.response_code(), SUCCESS);
+    }
 
     #[test]
     fn test_encode_decode() {

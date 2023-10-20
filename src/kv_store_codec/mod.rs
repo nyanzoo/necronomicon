@@ -118,3 +118,36 @@ pub const TEST_KEY: Key = Key([
     0x1a, 0x2b, 0x3c, 0x4d, 0x5e, 0x6f, 0xa1, 0xb2, 0xc3, 0xd4, 0xe5, 0xf6, 0x11, 0x22, 0x33, 0x44,
     0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
 ]);
+
+#[cfg(test)]
+mod tests {
+
+    use super::{is_kv_store_message, Key, END, START};
+
+    #[test]
+    fn test_key() {
+        let key = Key::try_from("test").unwrap();
+
+        let mut expected = [0u8; 32];
+        expected[..4].copy_from_slice(b"test");
+
+        assert_eq!(key.as_ref(), expected);
+
+        let key = Key::try_from("test".to_owned()).unwrap();
+        assert_eq!(key.as_ref(), expected);
+
+        let key = Key::try_from(&[1u8; 32][..]).unwrap();
+        assert_eq!(key.as_ref(), &[1; 32]);
+
+        let key = Key::try_from(&[1; 33][..]);
+        assert!(key.is_err());
+    }
+
+    #[test]
+    fn test_is_kv_store_message() {
+        assert!(!is_kv_store_message(START - 1));
+        assert!(is_kv_store_message(START));
+        assert!(is_kv_store_message(END));
+        assert!(!is_kv_store_message(END + 1));
+    }
+}

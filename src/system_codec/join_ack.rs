@@ -63,18 +63,38 @@ impl Ack for JoinAck {
 mod test {
     use crate::{
         tests::{test_ack_packet, test_encode_decode_packet},
-        Kind,
+        Ack, Kind, SUCCESS,
     };
 
     use super::JoinAck;
 
     #[test]
+    fn test_new() {
+        let join_ack = JoinAck::new((0, 0), 0);
+
+        assert_eq!(join_ack.header().kind(), Kind::JoinAck);
+        assert_eq!(join_ack.header().version(), 0);
+        assert_eq!(join_ack.header().uuid(), 0);
+        assert_eq!(join_ack.response_code(), SUCCESS);
+    }
+
+    #[test]
     fn test_encode_decode() {
-        test_encode_decode_packet!(Kind::JoinAck, JoinAck { response_code: 0 });
+        test_encode_decode_packet!(
+            Kind::JoinAck,
+            JoinAck {
+                response_code: SUCCESS
+            }
+        );
     }
 
     #[test]
     fn test_ack() {
-        test_ack_packet!(Kind::JoinAck, JoinAck { response_code: 0 });
+        test_ack_packet!(
+            Kind::JoinAck,
+            JoinAck {
+                response_code: SUCCESS
+            }
+        );
     }
 }

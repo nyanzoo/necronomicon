@@ -74,9 +74,30 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::test_encode_decode_packet, Kind};
+    use crate::{tests::test_encode_decode_packet, Ack, Kind, INTERNAL_ERROR, SUCCESS};
 
     use super::Len;
+
+    #[test]
+    fn test_new() {
+        let len = Len::new((0, 1), "test".to_string());
+
+        assert_eq!(len.header().kind(), Kind::Len);
+        assert_eq!(len.header().version(), 0);
+        assert_eq!(len.header().uuid(), 1);
+        assert_eq!(len.path(), "test");
+    }
+
+    #[test]
+    fn test_acks() {
+        let len = Len::new((0, 1), "test".to_string());
+
+        let ack = len.clone().ack(1);
+        assert_eq!(ack.response_code(), SUCCESS);
+
+        let nack = len.nack(INTERNAL_ERROR);
+        assert_eq!(nack.response_code(), INTERNAL_ERROR);
+    }
 
     #[test]
     fn test_encode_decode() {

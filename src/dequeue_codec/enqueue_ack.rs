@@ -54,18 +54,28 @@ impl crate::Ack for EnqueueAck {
 mod tests {
     use crate::{
         tests::{test_ack_packet, test_encode_decode_packet},
-        Kind,
+        Kind, SUCCESS,
     };
 
     use super::EnqueueAck;
 
     #[test]
     fn test_encode_decode() {
-        test_encode_decode_packet!(Kind::EnqueueAck, EnqueueAck { response_code: 0 });
+        test_encode_decode_packet!(
+            Kind::EnqueueAck,
+            EnqueueAck {
+                response_code: SUCCESS
+            }
+        );
     }
 
     #[test]
     fn test_ack() {
-        test_ack_packet!(Kind::EnqueueAck, EnqueueAck { response_code: 0 });
+        test_ack_packet!(
+            Kind::EnqueueAck,
+            EnqueueAck {
+                response_code: SUCCESS
+            }
+        );
     }
 }

@@ -153,8 +153,8 @@ impl From<u8> for Kind {
             kv_store_codec::DELETE_ACK => Kind::DeleteAck,
 
             // internal system messages
-            system_codec::CHAIN => Kind::Report,
-            system_codec::CHAIN_ACK => Kind::ReportAck,
+            system_codec::REPORT => Kind::Report,
+            system_codec::REPORT_ACK => Kind::ReportAck,
             system_codec::JOIN => Kind::Join,
             system_codec::JOIN_ACK => Kind::JoinAck,
             system_codec::TRANSFER => Kind::Transfer,
@@ -193,8 +193,8 @@ impl From<Kind> for u8 {
             Kind::DeleteAck => kv_store_codec::DELETE_ACK,
 
             // internal system messages
-            Kind::Report => system_codec::CHAIN,
-            Kind::ReportAck => system_codec::CHAIN_ACK,
+            Kind::Report => system_codec::REPORT,
+            Kind::ReportAck => system_codec::REPORT_ACK,
             Kind::Join => system_codec::JOIN,
             Kind::JoinAck => system_codec::JOIN_ACK,
             Kind::Transfer => system_codec::TRANSFER,
@@ -222,7 +222,7 @@ impl Header {
     }
 
     pub fn kind(&self) -> Kind {
-        self.kind.into()
+        self.kind
     }
 
     pub fn version(&self) -> u8 {
@@ -270,7 +270,7 @@ mod test {
 
     use test_case::test_case;
 
-    use crate::{Decode, Encode};
+    use crate::{Decode, Encode, Kind};
 
     use super::Header;
 
@@ -285,6 +285,9 @@ mod test {
 
         let mut buf = Cursor::new(buf);
         let actual = Header::decode(&mut buf).expect("decode");
+        assert_eq!(Kind::from(kind), header.kind());
+        assert_eq!(version, header.version());
+        assert_eq!(uuid, header.uuid());
         assert_eq!(actual, header);
     }
 }

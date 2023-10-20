@@ -54,18 +54,28 @@ impl Ack for TransferAck {
 mod test {
     use crate::{
         tests::{test_ack_packet, test_encode_decode_packet},
-        Kind,
+        Kind, SUCCESS,
     };
 
     use super::TransferAck;
 
     #[test]
     fn test_encode_decode() {
-        test_encode_decode_packet!(Kind::TransferAck, TransferAck { response_code: 0 });
+        test_encode_decode_packet!(
+            Kind::TransferAck,
+            TransferAck {
+                response_code: SUCCESS
+            }
+        );
     }
 
     #[test]
     fn test_ack() {
-        test_ack_packet!(Kind::TransferAck, TransferAck { response_code: 0 });
+        test_ack_packet!(
+            Kind::TransferAck,
+            TransferAck {
+                response_code: SUCCESS
+            }
+        );
     }
 }

@@ -11,4 +11,5 @@ thiserror = "1"
 
 [dev-dependencies]
 coverage-helper = "0"
+matches = "0.1"
 test-case = "3"

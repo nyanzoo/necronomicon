@@ -74,9 +74,33 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{kv_store_codec::TEST_KEY, tests::test_encode_decode_packet, Kind};
+    use crate::{
+        kv_store_codec::TEST_KEY, tests::test_encode_decode_packet, Ack, Kind, INTERNAL_ERROR,
+        SUCCESS,
+    };
 
     use super::Get;
+
+    #[test]
+    fn test_new() {
+        let get = Get::new((1, 1), TEST_KEY);
+
+        assert_eq!(get.header().kind(), Kind::Get);
+        assert_eq!(get.header().version(), 1);
+        assert_eq!(get.header().uuid(), 1);
+        assert_eq!(get.key(), &TEST_KEY);
+    }
+
+    #[test]
+    fn test_acks() {
+        let get = Get::new((1, 1), TEST_KEY);
+
+        let ack = get.clone().ack(vec![1, 2, 3]);
+        assert_eq!(ack.response_code(), SUCCESS);
+
+        let nack = get.nack(INTERNAL_ERROR);
+        assert_eq!(nack.response_code(), INTERNAL_ERROR);
+    }
 
     #[test]
     fn test_encode_decode() {

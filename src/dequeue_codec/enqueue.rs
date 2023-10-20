@@ -84,9 +84,30 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::test_encode_decode_packet, Kind};
+    use crate::{tests::test_encode_decode_packet, Ack, Kind, INTERNAL_ERROR, SUCCESS};
 
     use super::Enqueue;
+
+    #[test]
+    fn test_new() {
+        let enqueue = Enqueue::new((0, 0), "test".to_string(), vec![1, 2, 3]);
+
+        assert_eq!(enqueue.header().version(), 0);
+        assert_eq!(enqueue.header().uuid(), 0);
+        assert_eq!(enqueue.path(), "test");
+        assert_eq!(enqueue.value(), &[1, 2, 3]);
+    }
+
+    #[test]
+    fn test_acks() {
+        let enqueue = Enqueue::new((0, 0), "test".to_string(), vec![1, 2, 3]);
+
+        let ack = enqueue.clone().ack();
+        assert_eq!(ack.response_code(), SUCCESS);
+
+        let nack = enqueue.nack(INTERNAL_ERROR);
+        assert_eq!(nack.response_code(), INTERNAL_ERROR);
+    }
 
     #[test]
     fn test_encode_decode() {
