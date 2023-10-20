@@ -68,7 +68,7 @@ Tail -->> Operator: ReportAck (success)
 A command that is sent from the operator to nodes in the cluster to check if they are still alive. If a node does not respond to a `Ping` it will be removed from the cluster.
 
 ## Transfer
-Sent from `Operator` to `Tail` to request that it transfer its data to the `Candidate`. After the `Tail` has completed the transfer it will send a `Join` to the `Operator` to become a `Replica`.
+Sent from `Tail` to `Candidate` to transfer its data to the `Candidate`. After the `Tail` has completed the transfer it will send a `Join` to the `Operator` to become a `Replica`.
 
 ## Join
 This is sent from a Candidate node to the `Operator` to request to join the cluster after it has completed [Transfer](#transfer). After the `Operator` receives a `Join` it will send a `Report` to all nodes with the updated `Tail`. 
