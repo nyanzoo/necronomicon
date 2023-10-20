@@ -390,8 +390,8 @@ where
         let len = u64::from_be_bytes(len) as usize;
         let mut bytes = Vec::with_capacity(len);
 
-        for i in 0..len {
-            bytes[i] = Role::decode(reader)?;
+        for role in bytes.iter_mut().take(len) {
+            *role = Role::decode(reader)?;
         }
 
         Ok(bytes)

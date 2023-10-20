@@ -222,7 +222,7 @@ impl Header {
     }
 
     pub fn kind(&self) -> Kind {
-        self.kind.into()
+        self.kind
     }
 
     pub fn version(&self) -> u8 {
