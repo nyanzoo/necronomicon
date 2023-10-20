@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/nyanzoo/necronomicon/graph/badge.svg?token=crBlCdFC0o)](https://codecov.io/gh/nyanzoo/necronomicon)
+
 # necronomicon
 This is the codec for [lichdom](https://github.com/nyanzoo/lichdom)
 
