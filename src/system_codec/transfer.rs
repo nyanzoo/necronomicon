@@ -88,7 +88,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::test_encode_decode_packet, Kind};
+    use crate::{system_codec::Position, tests::test_encode_decode_packet, Kind};
 
     use super::Transfer;
 
@@ -97,8 +97,9 @@ mod test {
         test_encode_decode_packet!(
             Kind::Transfer,
             Transfer {
-                path: "/tmp/kitty".to_owned(),
-                content: vec![0x01, 0x02, 0x03, 0x04],
+                candidate: Position::Head {
+                    next: "next".to_owned(),
+                }
             }
         );
     }
