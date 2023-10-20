@@ -1,23 +1,27 @@
 use std::io::{Read, Write};
 
-use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+use crate::{header::VersionAndUuid, Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
-use super::{Position, TransferAck};
+use super::TransferAck;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub struct Transfer {
     pub(crate) header: Header,
-    pub(crate) candidate: Position,
+    pub(crate) path: String,
+    pub(crate) content: Vec<u8>,
 }
 
 impl Transfer {
-    pub fn new(header: Header, position: Position) -> Self {
-        assert_eq!(header.kind(), Kind::Chain);
-
+    pub fn new(
+        version_and_uuid: impl Into<VersionAndUuid>,
+        path: String,
+        content: Vec<u8>,
+    ) -> Self {
         Self {
-            header,
-            candidate: position,
+            header: version_and_uuid.into().into_header(Kind::Transfer),
+            path,
+            content,
         }
     }
 
@@ -25,8 +29,12 @@ impl Transfer {
         self.header
     }
 
-    pub fn candidate(&self) -> &Position {
-        &self.candidate
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
+    pub fn content(&self) -> &[u8] {
+        &self.content
     }
 
     pub fn ack(self) -> TransferAck {
@@ -54,9 +62,14 @@ where
     {
         assert_eq!(header.kind(), Kind::Transfer);
 
-        let candidate = Position::decode(reader)?;
+        let path = String::decode(reader)?;
+        let content = Vec::<u8>::decode(reader)?;
 
-        Ok(Self { header, candidate })
+        Ok(Self {
+            header,
+            path,
+            content,
+        })
     }
 }
 
@@ -66,7 +79,8 @@ where
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
-        self.candidate.encode(writer)?;
+        self.path.encode(writer)?;
+        self.content.encode(writer)?;
 
         Ok(())
     }
@@ -74,7 +88,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{system_codec::Position, tests::test_encode_decode_packet, Kind};
+    use crate::{tests::test_encode_decode_packet, Kind};
 
     use super::Transfer;
 
@@ -83,9 +97,8 @@ mod test {
         test_encode_decode_packet!(
             Kind::Transfer,
             Transfer {
-                candidate: Position::Head {
-                    next: "next".to_owned(),
-                }
+                path: "/tmp/kitty".to_owned(),
+                content: vec![0x01, 0x02, 0x03, 0x04],
             }
         );
     }

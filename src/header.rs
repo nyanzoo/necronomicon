@@ -1,13 +1,34 @@
 use std::{
+    fmt::Debug,
     io::{Read, Write},
-    mem::size_of,
 };
 
 use crate::{dequeue_codec, error::Error, kv_store_codec, system_codec, Decode, Encode};
 
+pub struct VersionAndUuid {
+    pub version: u8,
+    pub uuid: u128,
+}
+
+impl VersionAndUuid {
+    pub fn new(version: u8, uuid: u128) -> Self {
+        Self { version, uuid }
+    }
+
+    pub fn into_header(self, kind: impl Into<Kind>) -> Header {
+        Header::new(kind, self.version, self.uuid)
+    }
+}
+
+impl From<(u8, u128)> for VersionAndUuid {
+    fn from((version, uuid): (u8, u128)) -> Self {
+        Self { version, uuid }
+    }
+}
+
 // TODO: need to map these to packet types, also need to do partial
 // decodes of header to get packet type and then decode the rest.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
     // dequeue messages
     // make sure to keep these in sync with the ones in
@@ -36,12 +57,74 @@ pub enum Kind {
     DeleteAck = kv_store_codec::END as isize,
 
     // internal system messages
-    Chain = system_codec::START as isize,
-    ChainAck,
+    Report = system_codec::START as isize,
+    ReportAck,
     Join,
     JoinAck,
     Transfer,
-    TransferAck = system_codec::END as isize,
+    TransferAck,
+    Ping,
+    PingAck = system_codec::END as isize,
+}
+
+impl Debug for Kind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let res = match self {
+            // dequeue messages
+            Self::Enqueue => write!(f, "Enqueue"),
+            Self::EnqueueAck => write!(f, "EnqueueAck"),
+            Self::Dequeue => write!(f, "Dequeue"),
+            Self::DequeueAck => write!(f, "DequeueAck"),
+            Self::Peek => write!(f, "Peek"),
+            Self::PeekAck => write!(f, "PeekAck"),
+            Self::Len => write!(f, "Len"),
+            Self::LenAck => write!(f, "LenAck"),
+            Self::CreateQueue => write!(f, "CreateQueue"),
+            Self::CreateQueueAck => write!(f, "CreateQueueAck"),
+            Self::DeleteQueue => write!(f, "DeleteQueue"),
+            Self::DeleteQueueAck => write!(f, "DeleteQueueAck"),
+
+            // kv store messages
+            Self::Put => write!(f, "Put"),
+            Self::PutAck => write!(f, "PutAck"),
+            Self::Get => write!(f, "Get"),
+            Self::GetAck => write!(f, "GetAck"),
+            Self::Delete => write!(f, "Delete"),
+            Self::DeleteAck => write!(f, "DeleteAck"),
+
+            // internal system messages
+            Self::Report => write!(f, "Report"),
+            Self::ReportAck => write!(f, "ReportAck"),
+            Self::Join => write!(f, "Join"),
+            Self::JoinAck => write!(f, "JoinAck"),
+            Self::Transfer => write!(f, "Transfer"),
+            Self::TransferAck => write!(f, "TransferAck"),
+            Self::Ping => write!(f, "Ping"),
+            Self::PingAck => write!(f, "PingAck"),
+        };
+
+        res?;
+
+        write!(f, "({})", *self as u8)
+    }
+}
+
+impl<R> Decode<R> for Kind
+where
+    R: Read,
+{
+    fn decode(reader: &mut R) -> Result<Self, Error> {
+        u8::decode(reader).map(Self::from)
+    }
+}
+
+impl<W> Encode<W> for Kind
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
+        u8::from(*self).encode(writer)
+    }
 }
 
 impl From<u8> for Kind {
@@ -70,12 +153,14 @@ impl From<u8> for Kind {
             kv_store_codec::DELETE_ACK => Kind::DeleteAck,
 
             // internal system messages
-            system_codec::CHAIN => Kind::Chain,
-            system_codec::CHAIN_ACK => Kind::ChainAck,
+            system_codec::CHAIN => Kind::Report,
+            system_codec::CHAIN_ACK => Kind::ReportAck,
             system_codec::JOIN => Kind::Join,
             system_codec::JOIN_ACK => Kind::JoinAck,
             system_codec::TRANSFER => Kind::Transfer,
             system_codec::TRANSFER_ACK => Kind::TransferAck,
+            system_codec::PING => Kind::Ping,
+            system_codec::PING_ACK => Kind::PingAck,
 
             _ => panic!("invalid kind: {}", value),
         }
@@ -108,26 +193,27 @@ impl From<Kind> for u8 {
             Kind::DeleteAck => kv_store_codec::DELETE_ACK,
 
             // internal system messages
-            Kind::Chain => system_codec::CHAIN,
-            Kind::ChainAck => system_codec::CHAIN_ACK,
+            Kind::Report => system_codec::CHAIN,
+            Kind::ReportAck => system_codec::CHAIN_ACK,
             Kind::Join => system_codec::JOIN,
             Kind::JoinAck => system_codec::JOIN_ACK,
             Kind::Transfer => system_codec::TRANSFER,
             Kind::TransferAck => system_codec::TRANSFER_ACK,
+            Kind::Ping => system_codec::PING,
+            Kind::PingAck => system_codec::PING_ACK,
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-#[repr(C, packed)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Header {
-    kind: u8,
+    kind: Kind,
     version: u8,
     uuid: u128,
 }
 
 impl Header {
-    pub fn new(kind: Kind, version: u8, uuid: u128) -> Self {
+    pub fn new(kind: impl Into<Kind>, version: u8, uuid: u128) -> Self {
         Self {
             kind: kind.into(),
             version,
@@ -153,25 +239,15 @@ where
     R: Read,
 {
     fn decode(reader: &mut R) -> Result<Self, Error> {
-        let mut bytes = [0; size_of::<Header>()];
-        reader
-            .read_exact(&mut bytes)
-            .map_err(Error::IncompleteHeader)?;
+        let kind = Kind::decode(reader)?;
+        let version = u8::decode(reader)?;
+        let uuid = u128::decode(reader)?;
 
-        let mut header = Header {
-            kind: 0,
-            version: 0,
-            uuid: 0,
-        };
-
-        // Todo: verify kind
-        header.kind = bytes[0];
-        // Todo: verify version
-        header.version = bytes[1];
-        // Todo: verify length?
-        header.uuid = u128::from_be_bytes(bytes[2..18].try_into().expect("not u64"));
-
-        Ok(header)
+        Ok(Header {
+            kind,
+            version,
+            uuid,
+        })
     }
 }
 
@@ -180,12 +256,9 @@ where
     W: Write,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
-        let mut buf = [0; size_of::<Header>()];
-        buf[0] = self.kind;
-        buf[1] = self.version;
-        buf[2..18].copy_from_slice(&self.uuid.to_be_bytes());
-
-        writer.write_all(&buf).map_err(Error::Encode)?;
+        self.kind.encode(writer)?;
+        self.version.encode(writer)?;
+        self.uuid.encode(writer)?;
 
         Ok(())
     }
@@ -207,11 +280,7 @@ mod test {
     #[test_case(2, 2, 2; "two")]
     fn test_header_encode_decode(kind: u8, version: u8, uuid: u128) {
         let mut buf = Vec::new();
-        let header = Header {
-            kind,
-            version,
-            uuid,
-        };
+        let header = Header::new(kind, version, uuid);
         header.encode(&mut buf).expect("encode");
 
         let mut buf = Cursor::new(buf);

@@ -18,7 +18,7 @@ pub use put_ack::PutAck;
 mod put;
 pub use put::Put;
 
-use crate::{Decode, Encode};
+use crate::{Decode, Encode, Error};
 
 pub const START: u8 = 0x10;
 
@@ -45,34 +45,48 @@ pub fn is_kv_store_message(kind: u8) -> bool {
 pub struct Key([u8; 32]);
 
 impl Key {
-    pub fn new(key: [u8; 32]) -> Self {
+    pub const fn new(key: [u8; 32]) -> Self {
         Self(key)
+    }
+}
+
+impl TryFrom<String> for Key {
+    type Error = Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.as_str().try_into()
+    }
+}
+
+impl TryFrom<&str> for Key {
+    type Error = Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        value.as_bytes().try_into()
+    }
+}
+
+impl TryFrom<&[u8]> for Key {
+    type Error = Error;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        if value.len() > 32 {
+            return Err(Error::InvalidKeyLength(
+                String::from_utf8_lossy(value).to_string(),
+            ));
+        }
+
+        let mut bytes = [0; 32];
+        let len = std::cmp::min(bytes.len(), value.len());
+        bytes[..len].copy_from_slice(&value[..len]);
+
+        Ok(Self::new(bytes))
     }
 }
 
 impl AsRef<[u8]> for Key {
     fn as_ref(&self) -> &[u8] {
         &self.0
-    }
-}
-
-impl From<[u8; 32]> for Key {
-    fn from(key: [u8; 32]) -> Self {
-        Self::new(key)
-    }
-}
-
-impl From<Key> for [u8; 32] {
-    fn from(key: Key) -> Self {
-        key.0
-    }
-}
-
-impl From<&[u8]> for Key {
-    fn from(key: &[u8]) -> Self {
-        let mut bytes = [0; 32];
-        bytes.copy_from_slice(key);
-        Self::new(bytes)
     }
 }
 

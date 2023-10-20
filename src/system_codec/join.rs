@@ -1,25 +1,55 @@
 use std::io::{Read, Write};
 
-use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+use crate::{header::VersionAndUuid, Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
-use super::{JoinAck, Position};
+use super::{JoinAck, Role};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub struct Join {
     pub(crate) header: Header,
-    pub(crate) position: Position,
+    pub(crate) role: Role,
+    pub(crate) version: u128,
+    pub(crate) successor_lost: bool,
 }
 
 impl Join {
-    pub fn new(header: Header, position: Position) -> Self {
-        assert_eq!(header.kind(), Kind::Join);
-
-        Self { header, position }
+    pub fn new(
+        version_and_uuid: impl Into<VersionAndUuid>,
+        role: Role,
+        version: u128,
+        successor_lost: bool,
+    ) -> Self {
+        Self {
+            header: version_and_uuid.into().into_header(Kind::Join),
+            role,
+            version,
+            successor_lost,
+        }
     }
 
     pub fn header(&self) -> Header {
         self.header
+    }
+
+    pub fn role(&self) -> &Role {
+        &self.role
+    }
+
+    pub fn store_version(&self) -> u128 {
+        self.version
+    }
+
+    pub fn successor_lost(&self) -> bool {
+        self.successor_lost
+    }
+
+    pub fn addr(&self) -> Option<&str> {
+        match &self.role {
+            Role::Backend(addr) => Some(addr),
+            Role::Frontend(addr) => Some(addr),
+            Role::Observer => None,
+        }
     }
 
     pub fn ack(self) -> JoinAck {
@@ -47,9 +77,16 @@ where
     {
         assert_eq!(header.kind(), Kind::Join);
 
-        let position = Position::decode(reader)?;
+        let role = Role::decode(reader)?;
+        let version = u128::decode(reader)?;
+        let successor_lost = u8::decode(reader)? > 0;
 
-        Ok(Self { header, position })
+        Ok(Self {
+            header,
+            role,
+            version,
+            successor_lost,
+        })
     }
 }
 
@@ -59,7 +96,9 @@ where
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
-        self.position.encode(writer)?;
+        self.role.encode(writer)?;
+        self.version.encode(writer)?;
+        u8::from(self.successor_lost).encode(writer)?;
 
         Ok(())
     }
@@ -67,7 +106,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{system_codec::Position, tests::test_encode_decode_packet, Kind};
+    use crate::{system_codec::Role, tests::test_encode_decode_packet, Kind};
 
     use super::Join;
 
@@ -76,9 +115,9 @@ mod test {
         test_encode_decode_packet!(
             Kind::Join,
             Join {
-                position: Position::Tail {
-                    frontend: "fe".to_owned(),
-                },
+                role: Role::Backend("localhost".to_string()),
+                version: 1,
+                successor_lost: false,
             }
         );
     }

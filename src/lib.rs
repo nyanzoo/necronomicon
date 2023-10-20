@@ -2,10 +2,13 @@
 
 use std::io::{Read, Write};
 
+use log::debug;
+
 mod codes;
 pub use codes::{
-    FAILED_TO_PUSH_TO_TRANSACTION_LOG, INTERNAL_ERROR, KEY_ALREADY_EXISTS, KEY_DOES_NOT_EXIST,
-    QUEUE_ALREADY_EXISTS, QUEUE_DOES_NOT_EXIST, QUEUE_EMPTY, QUEUE_FULL, SERVER_BUSY, SUCCESS,
+    CHAIN_NOT_READY, FAILED_TO_PUSH_TO_TRANSACTION_LOG, INTERNAL_ERROR, KEY_ALREADY_EXISTS,
+    KEY_DOES_NOT_EXIST, QUEUE_ALREADY_EXISTS, QUEUE_DOES_NOT_EXIST, QUEUE_EMPTY, QUEUE_FULL,
+    SERVER_BUSY, SUCCESS,
 };
 
 pub mod dequeue_codec;
@@ -24,7 +27,7 @@ pub mod kv_store_codec;
 use kv_store_codec::{Delete, DeleteAck, Get, GetAck, Put, PutAck};
 
 pub mod system_codec;
-use system_codec::{Chain, ChainAck, Join, JoinAck, Transfer, TransferAck};
+use system_codec::{Join, JoinAck, Ping, PingAck, Report, ReportAck, Role, Transfer, TransferAck};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Packet {
@@ -51,15 +54,53 @@ pub enum Packet {
     DeleteAck(DeleteAck),
 
     // internal system messages
-    Chain(Chain),
-    ChainAck(ChainAck),
+    Report(Report),
+    ReportAck(ReportAck),
     Join(Join),
     JoinAck(JoinAck),
     Transfer(Transfer),
     TransferAck(TransferAck),
+    Ping(Ping),
+    PingAck(PingAck),
 }
 
 impl Packet {
+    pub fn header(&self) -> Header {
+        match self {
+            // dequeue
+            Packet::Enqueue(packet) => packet.header,
+            Packet::EnqueueAck(packet) => packet.header,
+            Packet::Dequeue(packet) => packet.header,
+            Packet::DequeueAck(packet) => packet.header,
+            Packet::Peek(packet) => packet.header,
+            Packet::PeekAck(packet) => packet.header,
+            Packet::Len(packet) => packet.header,
+            Packet::LenAck(packet) => packet.header,
+            Packet::CreateQueue(packet) => packet.header,
+            Packet::CreateQueueAck(packet) => packet.header,
+            Packet::DeleteQueue(packet) => packet.header,
+            Packet::DeleteQueueAck(packet) => packet.header,
+
+            // kv store
+            Packet::Put(packet) => packet.header,
+            Packet::PutAck(packet) => packet.header,
+            Packet::Get(packet) => packet.header,
+            Packet::GetAck(packet) => packet.header,
+            Packet::Delete(packet) => packet.header,
+            Packet::DeleteAck(packet) => packet.header,
+
+            // internal system messages
+            Packet::Report(packet) => packet.header,
+            Packet::ReportAck(packet) => packet.header,
+            Packet::Join(packet) => packet.header,
+            Packet::JoinAck(packet) => packet.header,
+            Packet::Transfer(packet) => packet.header,
+            Packet::TransferAck(packet) => packet.header,
+            Packet::Ping(packet) => packet.header,
+            Packet::PingAck(packet) => packet.header,
+        }
+    }
+
     pub fn nack(self, response_code: u8) -> Option<Packet> {
         match self {
             // dequeue
@@ -76,7 +117,7 @@ impl Packet {
             Packet::Delete(this) => Some(Packet::DeleteAck(this.nack(response_code))),
 
             // internal system messages
-            Packet::Chain(this) => Some(Packet::ChainAck(this.nack(response_code))),
+            Packet::Report(this) => Some(Packet::ReportAck(this.nack(response_code))),
             Packet::Join(this) => Some(Packet::JoinAck(this.nack(response_code))),
             Packet::Transfer(this) => Some(Packet::TransferAck(this.nack(response_code))),
 
@@ -107,6 +148,7 @@ pub fn partial_decode<R>(header: Header, reader: &mut R) -> Result<Packet, Error
 where
     R: Read,
 {
+    debug!("partial_decode: {:?}", header);
     let packet = match header.kind() {
         // dequeue messages
         Kind::Enqueue => Packet::Enqueue(Enqueue::decode(header, reader)?),
@@ -131,12 +173,14 @@ where
         Kind::DeleteAck => Packet::DeleteAck(DeleteAck::decode(header, reader)?),
 
         // internal system messages
-        Kind::Chain => Packet::Chain(Chain::decode(header, reader)?),
-        Kind::ChainAck => Packet::ChainAck(ChainAck::decode(header, reader)?),
+        Kind::Report => Packet::Report(Report::decode(header, reader)?),
+        Kind::ReportAck => Packet::ReportAck(ReportAck::decode(header, reader)?),
         Kind::Join => Packet::Join(Join::decode(header, reader)?),
         Kind::JoinAck => Packet::JoinAck(JoinAck::decode(header, reader)?),
         Kind::Transfer => Packet::Transfer(Transfer::decode(header, reader)?),
         Kind::TransferAck => Packet::TransferAck(TransferAck::decode(header, reader)?),
+        Kind::Ping => Packet::Ping(Ping::decode(header, reader)?),
+        Kind::PingAck => Packet::PingAck(PingAck::decode(header, reader)?),
     };
 
     Ok(packet)
@@ -172,6 +216,7 @@ where
     W: Write,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
+        debug!("encode: {:?}", self);
         match self {
             // dequeue
             Packet::Enqueue(packet) => packet.encode(writer),
@@ -196,13 +241,58 @@ where
             Packet::DeleteAck(packet) => packet.encode(writer),
 
             // internal system messages
-            Packet::Chain(packet) => packet.encode(writer),
-            Packet::ChainAck(packet) => packet.encode(writer),
+            Packet::Report(packet) => packet.encode(writer),
+            Packet::ReportAck(packet) => packet.encode(writer),
             Packet::Join(packet) => packet.encode(writer),
             Packet::JoinAck(packet) => packet.encode(writer),
             Packet::Transfer(packet) => packet.encode(writer),
             Packet::TransferAck(packet) => packet.encode(writer),
+            Packet::Ping(packet) => packet.encode(writer),
+            Packet::PingAck(packet) => packet.encode(writer),
         }
+    }
+}
+
+//
+// Option
+//
+
+impl<R, T> Decode<R> for Option<T>
+where
+    R: Read,
+    T: Decode<R>,
+{
+    fn decode(reader: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let is_some = u8::decode(reader)? > 0;
+        if is_some {
+            let value = T::decode(reader)?;
+            Ok(Some(value))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+impl<W, T> Encode<W> for Option<T>
+where
+    W: Write,
+    T: Encode<W>,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
+        match self {
+            Some(value) => {
+                1u8.encode(writer)?;
+                value.encode(writer)?;
+            }
+            None => {
+                0u8.encode(writer)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -250,9 +340,9 @@ where
     where
         Self: Sized,
     {
-        let mut len = [0; 2];
+        let mut len = [0; 8];
         reader.read_exact(&mut len).map_err(Error::Decode)?;
-        let len = u16::from_be_bytes(len);
+        let len = u64::from_be_bytes(len);
         let mut bytes = vec![0; len as usize];
         reader.read_exact(&mut bytes).map_err(Error::Decode)?;
         Ok(bytes)
@@ -264,11 +354,64 @@ where
     W: Write,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
-        let len = self.len() as u16;
+        let len = self.len() as u64;
         writer
             .write_all(&len.to_be_bytes())
             .map_err(Error::Encode)?;
         writer.write_all(self).map_err(Error::Encode)?;
+        Ok(())
+    }
+}
+
+impl<W> Encode<W> for &[u8]
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
+        let len = self.len() as u64;
+        writer
+            .write_all(&len.to_be_bytes())
+            .map_err(Error::Encode)?;
+        writer.write_all(self).map_err(Error::Encode)?;
+        Ok(())
+    }
+}
+
+impl<R> Decode<R> for Vec<Role>
+where
+    R: Read,
+{
+    fn decode(reader: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let mut len = [0; 8];
+        reader.read_exact(&mut len).map_err(Error::Decode)?;
+        let len = u64::from_be_bytes(len) as usize;
+        let mut bytes = Vec::with_capacity(len);
+
+        for i in 0..len {
+            bytes[i] = Role::decode(reader)?;
+        }
+
+        Ok(bytes)
+    }
+}
+
+impl<W> Encode<W> for Vec<Role>
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
+        let len = self.len() as u64;
+        writer
+            .write_all(&len.to_be_bytes())
+            .map_err(Error::Encode)?;
+
+        for role in self {
+            role.encode(writer)?;
+        }
+
         Ok(())
     }
 }
@@ -370,6 +513,32 @@ where
 }
 
 impl<W> Encode<W> for u64
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), Error> {
+        writer
+            .write_all(&self.to_be_bytes())
+            .map_err(Error::Encode)?;
+        Ok(())
+    }
+}
+
+impl<R> Decode<R> for u128
+where
+    R: Read,
+{
+    fn decode(reader: &mut R) -> Result<Self, Error>
+    where
+        Self: Sized,
+    {
+        let mut bytes = [0; 16];
+        reader.read_exact(&mut bytes).map_err(Error::Decode)?;
+        Ok(u128::from_be_bytes(bytes))
+    }
+}
+
+impl<W> Encode<W> for u128
 where
     W: Write,
 {
@@ -486,6 +655,23 @@ pub(crate) mod tests {
             let header = Header::new($kind, 123, 456);
             let mut bytes = vec![];
             let packet = T { header, $i: $v };
+            packet.encode(&mut bytes).unwrap();
+            let mut slice = bytes.as_slice();
+            let header = Header::decode(&mut slice).unwrap();
+            let decoded = T::decode(header, &mut slice).unwrap();
+            assert_eq!(packet, decoded);
+        };
+        // No fields
+        (
+            $kind:expr,
+            $struct:ty {}
+        ) => {
+            use crate::{Decode, Encode, Header, PartialDecode};
+
+            type T = $struct;
+            let header = Header::new($kind, 123, 456);
+            let mut bytes = vec![];
+            let packet = T { header };
             packet.encode(&mut bytes).unwrap();
             let mut slice = bytes.as_slice();
             let header = Header::decode(&mut slice).unwrap();
@@ -611,22 +797,22 @@ pub(crate) mod tests {
                 header: Header::new(crate::Kind::DeleteAck, 123, 456),
                 response_code: crate::SUCCESS,
             }),
-            Packet::Chain(crate::system_codec::Chain {
-                header: Header::new(crate::Kind::Chain, 123, 456),
+            Packet::Report(crate::system_codec::Report {
+                header: Header::new(crate::Kind::Report, 123, 456),
                 position: crate::system_codec::Position::Middle {
                     next: "foo".to_string(),
                 },
             }),
-            Packet::ChainAck(crate::system_codec::ChainAck {
-                header: Header::new(crate::Kind::ChainAck, 123, 456),
+            Packet::ReportAck(crate::system_codec::ReportAck {
+                header: Header::new(crate::Kind::ReportAck, 123, 456),
 
                 response_code: crate::SUCCESS,
             }),
             Packet::Join(crate::system_codec::Join {
                 header: Header::new(crate::Kind::Join, 123, 456),
-                position: crate::system_codec::Position::Middle {
-                    next: "foo".to_string(),
-                },
+                role: crate::system_codec::Role::Backend("foo".to_string()),
+                version: 1,
+                successor_lost: false,
             }),
             Packet::JoinAck(crate::system_codec::JoinAck {
                 header: Header::new(crate::Kind::JoinAck, 123, 456),
@@ -634,9 +820,8 @@ pub(crate) mod tests {
             }),
             Packet::Transfer(crate::system_codec::Transfer {
                 header: Header::new(crate::Kind::Transfer, 123, 456),
-                candidate: crate::system_codec::Position::Candidate {
-                    candidate: "foo".to_string(),
-                },
+                path: "/tmp/kitties".to_owned(),
+                content: vec![1, 2, 3],
             }),
             Packet::TransferAck(crate::system_codec::TransferAck {
                 header: Header::new(crate::Kind::TransferAck, 123, 456),

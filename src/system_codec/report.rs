@@ -1,21 +1,22 @@
 use std::io::{Read, Write};
 
-use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+use crate::{header::VersionAndUuid, Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
-use super::{ChainAck, Position};
+use super::{Position, ReportAck};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub struct Chain {
+pub struct Report {
     pub(crate) header: Header,
     pub(crate) position: Position,
 }
 
-impl Chain {
-    pub fn new(header: Header, position: Position) -> Self {
-        assert_eq!(header.kind(), Kind::Chain);
-
-        Self { header, position }
+impl Report {
+    pub fn new(version_and_uuid: impl Into<VersionAndUuid>, position: Position) -> Self {
+        Self {
+            header: version_and_uuid.into().into_header(Kind::Report),
+            position,
+        }
     }
 
     pub fn header(&self) -> Header {
@@ -26,22 +27,22 @@ impl Chain {
         &self.position
     }
 
-    pub fn ack(self) -> ChainAck {
-        ChainAck {
-            header: Header::new(Kind::ChainAck, self.header.version(), self.header.uuid()),
+    pub fn ack(self) -> ReportAck {
+        ReportAck {
+            header: Header::new(Kind::ReportAck, self.header.version(), self.header.uuid()),
             response_code: SUCCESS,
         }
     }
 
-    pub fn nack(self, response_code: u8) -> ChainAck {
-        ChainAck {
-            header: Header::new(Kind::ChainAck, self.header.version(), self.header.uuid()),
+    pub fn nack(self, response_code: u8) -> ReportAck {
+        ReportAck {
+            header: Header::new(Kind::ReportAck, self.header.version(), self.header.uuid()),
             response_code,
         }
     }
 }
 
-impl<R> PartialDecode<R> for Chain
+impl<R> PartialDecode<R> for Report
 where
     R: Read,
 {
@@ -49,7 +50,7 @@ where
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::Chain);
+        assert_eq!(header.kind(), Kind::Report);
 
         let position = Position::decode(reader)?;
 
@@ -57,7 +58,7 @@ where
     }
 }
 
-impl<W> Encode<W> for Chain
+impl<W> Encode<W> for Report
 where
     W: Write,
 {
@@ -73,13 +74,13 @@ where
 mod test {
     use crate::{system_codec::Position, tests::test_encode_decode_packet, Kind};
 
-    use super::Chain;
+    use super::Report;
 
     #[test]
     fn test_encode_decode() {
         test_encode_decode_packet!(
-            Kind::Chain,
-            Chain {
+            Kind::Report,
+            Report {
                 position: Position::Head {
                     next: "next".to_owned(),
                 },

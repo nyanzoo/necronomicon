@@ -1,10 +1,10 @@
 use std::io::{Read, Write};
 
-use crate::{Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+use crate::{header::VersionAndUuid, Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
 
 use super::{GetAck, Key};
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
 pub struct Get {
     pub(crate) header: Header,
@@ -12,10 +12,11 @@ pub struct Get {
 }
 
 impl Get {
-    pub fn new(header: Header, key: Key) -> Self {
-        assert_eq!(header.kind(), Kind::Get);
-
-        Self { header, key }
+    pub fn new(version_and_uuid: impl Into<VersionAndUuid>, key: Key) -> Self {
+        Self {
+            header: version_and_uuid.into().into_header(Kind::Get),
+            key,
+        }
     }
 
     pub fn header(&self) -> Header {
