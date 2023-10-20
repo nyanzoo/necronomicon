@@ -14,10 +14,6 @@ impl PingAck {
             header: version_and_uuid.into().into_header(Kind::PingAck),
         }
     }
-
-    pub fn header(&self) -> Header {
-        self.header
-    }
 }
 
 impl<R> PartialDecode<R> for PingAck
@@ -57,12 +53,29 @@ impl Ack for PingAck {
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::test_encode_decode_packet, Kind};
+    use crate::{
+        tests::{test_ack_packet, test_encode_decode_packet},
+        Ack, Kind,
+    };
 
     use super::PingAck;
 
     #[test]
+    fn test_new() {
+        let ping_ack = PingAck::new((1, 2));
+
+        assert_eq!(ping_ack.header().kind(), Kind::PingAck);
+        assert_eq!(ping_ack.header().version(), 1);
+        assert_eq!(ping_ack.header().uuid(), 2);
+    }
+
+    #[test]
     fn test_encode_decode() {
         test_encode_decode_packet!(Kind::PingAck, PingAck {});
+    }
+
+    #[test]
+    fn test_ack() {
+        test_ack_packet!(Kind::PingAck, PingAck {});
     }
 }

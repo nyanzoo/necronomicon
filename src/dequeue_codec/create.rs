@@ -92,9 +92,30 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::test_encode_decode_packet, Kind};
+    use crate::{tests::test_encode_decode_packet, Ack, Kind, INTERNAL_ERROR, SUCCESS};
 
     use super::Create;
+
+    #[test]
+    fn test_new() {
+        let create = Create::new((0, 1), "test".to_string(), 1024);
+
+        assert_eq!(create.header().version(), 0);
+        assert_eq!(create.header().uuid(), 1);
+        assert_eq!(create.path(), "test");
+        assert_eq!(create.node_size(), 1024);
+    }
+
+    #[test]
+    fn test_acks() {
+        let create = Create::new((0, 1), "test".to_string(), 1024);
+
+        let ack = create.clone().ack();
+        assert_eq!(ack.response_code(), SUCCESS);
+
+        let nack = create.nack(INTERNAL_ERROR);
+        assert_eq!(nack.response_code(), INTERNAL_ERROR);
+    }
 
     #[test]
     fn test_encode_decode() {

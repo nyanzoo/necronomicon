@@ -58,7 +58,7 @@ impl Ack for PeekAck {
 mod tests {
     use crate::{
         tests::{test_ack_packet, test_encode_decode_packet},
-        Kind,
+        Kind, SUCCESS,
     };
 
     use super::PeekAck;
@@ -68,7 +68,7 @@ mod tests {
         test_encode_decode_packet!(
             Kind::PeekAck,
             PeekAck {
-                response_code: 0,
+                response_code: SUCCESS,
                 value: vec![1, 2, 3],
             }
         );
@@ -79,7 +79,7 @@ mod tests {
         test_ack_packet!(
             Kind::PeekAck,
             PeekAck {
-                response_code: 0,
+                response_code: SUCCESS,
                 value: vec![1, 2, 3],
             }
         );

@@ -88,9 +88,39 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::test_encode_decode_packet, Kind};
+    use crate::{tests::test_encode_decode_packet, Ack, Kind, INTERNAL_ERROR, SUCCESS};
 
     use super::Transfer;
+
+    #[test]
+    fn test_new() {
+        let transfer = Transfer::new(
+            (1, 2),
+            "/tmp/kitty".to_owned(),
+            vec![0x01, 0x02, 0x03, 0x04],
+        );
+
+        assert_eq!(transfer.header().kind(), Kind::Transfer);
+        assert_eq!(transfer.header().version(), 1);
+        assert_eq!(transfer.header().uuid(), 2);
+        assert_eq!(transfer.path(), "/tmp/kitty");
+        assert_eq!(transfer.content(), &[0x01, 0x02, 0x03, 0x04]);
+    }
+
+    #[test]
+    fn test_acks() {
+        let transfer = Transfer::new(
+            (1, 2),
+            "/tmp/kitty".to_owned(),
+            vec![0x01, 0x02, 0x03, 0x04],
+        );
+
+        let ack = transfer.clone().ack();
+        assert_eq!(ack.response_code(), SUCCESS);
+
+        let nack = transfer.nack(INTERNAL_ERROR);
+        assert_eq!(nack.response_code(), INTERNAL_ERROR);
+    }
 
     #[test]
     fn test_encode_decode() {

@@ -80,9 +80,29 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::test_encode_decode_packet, Kind};
+    use crate::{tests::test_encode_decode_packet, Ack, Kind, INTERNAL_ERROR, SUCCESS};
 
     use super::Delete;
+
+    #[test]
+    fn test_new() {
+        let delete = Delete::new((1, 2), "test".to_string());
+
+        assert_eq!(delete.header().version(), 1);
+        assert_eq!(delete.header().uuid(), 2);
+        assert_eq!(delete.path(), "test");
+    }
+
+    #[test]
+    fn test_ack() {
+        let delete = Delete::new((1, 2), "test".to_string());
+
+        let ack = delete.clone().ack();
+        assert_eq!(ack.response_code(), SUCCESS);
+
+        let nack = delete.nack(INTERNAL_ERROR);
+        assert_eq!(nack.response_code(), INTERNAL_ERROR);
+    }
 
     #[test]
     fn test_encode_decode() {

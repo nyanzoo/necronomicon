@@ -58,7 +58,7 @@ impl Ack for LenAck {
 mod test {
     use crate::{
         tests::{test_ack_packet, test_encode_decode_packet},
-        Kind,
+        Kind, SUCCESS,
     };
 
     use super::LenAck;
@@ -68,7 +68,7 @@ mod test {
         test_encode_decode_packet!(
             Kind::LenAck,
             LenAck {
-                response_code: 0,
+                response_code: SUCCESS,
                 len: 123,
             }
         );
@@ -79,7 +79,7 @@ mod test {
         test_ack_packet!(
             Kind::LenAck,
             LenAck {
-                response_code: 0,
+                response_code: SUCCESS,
                 len: 123,
             }
         );

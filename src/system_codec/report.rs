@@ -72,9 +72,48 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{system_codec::Position, tests::test_encode_decode_packet, Kind};
+    use crate::{
+        system_codec::Position, tests::test_encode_decode_packet, Ack, Kind, INTERNAL_ERROR,
+        SUCCESS,
+    };
 
     use super::Report;
+
+    #[test]
+    fn test_new() {
+        let report = Report::new(
+            (1, 2),
+            Position::Head {
+                next: "next".to_owned(),
+            },
+        );
+
+        assert_eq!(report.header().kind(), Kind::Report);
+        assert_eq!(report.header().version(), 1);
+        assert_eq!(report.header().uuid(), 2);
+        assert_eq!(
+            report.position(),
+            &Position::Head {
+                next: "next".to_owned(),
+            }
+        );
+    }
+
+    #[test]
+    fn test_ack() {
+        let report = Report::new(
+            (1, 2),
+            Position::Head {
+                next: "next".to_owned(),
+            },
+        );
+
+        let report_ack = report.clone().ack();
+        assert_eq!(report_ack.response_code(), SUCCESS);
+
+        let report_nack = report.nack(INTERNAL_ERROR);
+        assert_eq!(report_nack.response_code(), INTERNAL_ERROR);
+    }
 
     #[test]
     fn test_encode_decode() {

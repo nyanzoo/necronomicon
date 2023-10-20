@@ -29,9 +29,9 @@ use crate::{Decode, Encode};
 pub const START: u8 = 0x70;
 
 /// A message to inform a node of position in the chain.
-pub const CHAIN: u8 = START;
+pub const REPORT: u8 = START;
 /// An ack for a chain message.
-pub const CHAIN_ACK: u8 = START + 1;
+pub const REPORT_ACK: u8 = START + 1;
 /// A message to indicate to operator that the transfer is complete (failure recovery).
 pub const JOIN: u8 = START + 2;
 /// An ack for a join message.
@@ -94,6 +94,7 @@ where
         match kind {
             1 => Ok(Role::Backend(String::decode(reader)?)),
             2 => Ok(Role::Frontend(String::decode(reader)?)),
+            3 => Ok(Role::Observer),
             _ => Err(crate::Error::SystemBadRole(kind)),
         }
     }
@@ -198,8 +199,87 @@ where
                 Ok(Position::Frontend { head, tail })
             }
 
+            // Observer
+            6 => {
+                let chain = Vec::<Role>::decode(reader)?;
+                Ok(Position::Observer { chain })
+            }
+
             // Unknown
             _ => Err(crate::Error::SystemBadPosition(kind)),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use matches::assert_matches;
+
+    use crate::{Decode, Encode};
+
+    use super::{Position, Role, END, START};
+
+    #[test]
+    fn is_system_message() {
+        assert!(!super::is_system_message(0));
+        assert!(super::is_system_message(START));
+        assert!(super::is_system_message(END));
+        assert!(!super::is_system_message(END + 1));
+    }
+
+    #[test]
+    fn encode_decode_role() {
+        for role in &[
+            Role::Backend("backend".to_string()),
+            Role::Frontend("frontend".to_string()),
+            Role::Observer,
+        ] {
+            let mut bytes = Vec::new();
+            role.encode(&mut bytes).unwrap();
+            let decoded = Role::decode(&mut bytes.as_slice()).unwrap();
+            assert_eq!(*role, decoded);
+        }
+
+        assert_matches!(
+            Role::decode(&mut [0u8].as_ref()),
+            Err(crate::Error::SystemBadRole(0))
+        );
+    }
+
+    #[test]
+    fn encode_decode_position() {
+        for position in &[
+            Position::Head {
+                next: "next".to_string(),
+            },
+            Position::Middle {
+                next: "next".to_string(),
+            },
+            Position::Tail {
+                candidate: Some("candidate".to_string()),
+            },
+            Position::Candidate,
+            Position::Frontend {
+                head: Some("head".to_string()),
+                tail: Some("tail".to_string()),
+            },
+            Position::Observer {
+                chain: vec![
+                    Role::Backend("backend".to_string()),
+                    Role::Frontend("frontend".to_string()),
+                    Role::Observer,
+                ],
+            },
+        ] {
+            let mut bytes = Vec::new();
+            position.encode(&mut bytes).unwrap();
+            let decoded = Position::decode(&mut bytes.as_slice()).unwrap();
+            assert_eq!(*position, decoded);
+        }
+
+        assert_matches!(
+            Position::decode(&mut [0u8].as_ref()),
+            Err(crate::Error::SystemBadPosition(0))
+        );
     }
 }

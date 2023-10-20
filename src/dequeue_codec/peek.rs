@@ -74,9 +74,30 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::test_encode_decode_packet, Kind};
+    use crate::{tests::test_encode_decode_packet, Ack, Kind, INTERNAL_ERROR, SUCCESS};
 
     use super::Peek;
+
+    #[test]
+    fn test_new() {
+        let peek = Peek::new((1, 2), "test".to_string());
+
+        assert_eq!(peek.header().kind(), Kind::Peek);
+        assert_eq!(peek.header().version(), 1);
+        assert_eq!(peek.header().uuid(), 2);
+        assert_eq!(peek.path(), "test");
+    }
+
+    #[test]
+    fn test_acks() {
+        let peek = Peek::new((1, 2), "test".to_string());
+
+        let ack = peek.clone().ack(vec![1, 2, 3]);
+        assert_eq!(ack.response_code(), SUCCESS);
+
+        let nack = peek.nack(INTERNAL_ERROR);
+        assert_eq!(nack.response_code(), INTERNAL_ERROR);
+    }
 
     #[test]
     fn test_encode_decode() {

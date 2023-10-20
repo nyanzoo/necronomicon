@@ -106,9 +106,34 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{system_codec::Role, tests::test_encode_decode_packet, Kind};
+    use crate::{
+        system_codec::Role, tests::test_encode_decode_packet, Ack, Header, Kind, INTERNAL_ERROR,
+        SUCCESS,
+    };
 
     use super::Join;
+
+    #[test]
+    fn test_getters() {
+        let join = Join::new((1, 2), Role::Backend("localhost".to_string()), 1, false);
+
+        assert_eq!(join.header(), Header::new(Kind::Join, 1, 2));
+        assert_eq!(join.role(), &Role::Backend("localhost".to_string()));
+        assert_eq!(join.store_version(), 1);
+        assert_eq!(join.successor_lost(), false);
+        assert_eq!(join.addr(), Some("localhost"));
+    }
+
+    #[test]
+    fn test_acks() {
+        let join = Join::new((1, 2), Role::Backend("localhost".to_string()), 1, false);
+
+        let ack = join.clone().ack();
+        assert_eq!(ack.response_code(), SUCCESS);
+
+        let nack = join.nack(INTERNAL_ERROR);
+        assert_eq!(nack.response_code(), INTERNAL_ERROR);
+    }
 
     #[test]
     fn test_encode_decode() {
