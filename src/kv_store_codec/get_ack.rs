@@ -10,6 +10,12 @@ pub struct GetAck {
     pub(crate) value: Vec<u8>,
 }
 
+impl GetAck {
+    pub fn value(&self) -> &[u8] {
+        &self.value
+    }
+}
+
 impl<R> PartialDecode<R> for GetAck
 where
     R: Read,
