@@ -138,12 +138,13 @@ mod test {
 
     #[test]
     fn test_encode_decode() {
-        verify_encode_decode(Packet::Transfer(Transfer::new(
-            1,
-            2,
-            byte_str(b"/tmp/kitty"),
-            42,
-            binary_data(&[0x01, 0x02, 0x03, 0x04]),
-        )));
+        test_encode_decode_packet!(
+            Kind::Transfer,
+            Transfer {
+                candidate: Position::Head {
+                    next: "next".to_owned(),
+                }
+            }
+        );
     }
 }
