@@ -428,7 +428,7 @@ mod vector {
             Self: Sized,
         {
             let len = usize::decode(reader)?;
-            let mut bytes = vec![0; len as usize];
+            let mut bytes = vec![0; len];
             reader.read_exact(&mut bytes).map_err(Error::Decode)?;
             Ok(bytes)
         }
