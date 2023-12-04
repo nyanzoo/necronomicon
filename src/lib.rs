@@ -27,7 +27,7 @@ pub mod kv_store_codec;
 use kv_store_codec::{Delete, DeleteAck, Get, GetAck, Put, PutAck};
 
 pub mod system_codec;
-use system_codec::{Join, JoinAck, Ping, PingAck, Report, ReportAck, Role, Transfer, TransferAck};
+use system_codec::{Join, JoinAck, Ping, PingAck, Report, ReportAck, Transfer, TransferAck};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Packet {
@@ -194,6 +194,10 @@ where
     partial_decode(header, reader)
 }
 
+//
+// Decode
+//
+
 pub trait Decode<R>
 where
     R: Read,
@@ -203,6 +207,10 @@ where
         Self: Sized;
 }
 
+//
+// Encode
+//
+
 pub trait Encode<W>
 where
     W: Write,
@@ -210,369 +218,233 @@ where
     fn encode(&self, writer: &mut W) -> Result<(), Error>;
 }
 
-// impls for Packet
-impl<W> Encode<W> for Packet
-where
-    W: Write,
-{
-    fn encode(&self, writer: &mut W) -> Result<(), Error> {
-        debug!("encode: {:?}", self);
-        match self {
-            // dequeue
-            Packet::Enqueue(packet) => packet.encode(writer),
-            Packet::EnqueueAck(packet) => packet.encode(writer),
-            Packet::Dequeue(packet) => packet.encode(writer),
-            Packet::DequeueAck(packet) => packet.encode(writer),
-            Packet::Peek(packet) => packet.encode(writer),
-            Packet::PeekAck(packet) => packet.encode(writer),
-            Packet::Len(packet) => packet.encode(writer),
-            Packet::LenAck(packet) => packet.encode(writer),
-            Packet::CreateQueue(packet) => packet.encode(writer),
-            Packet::CreateQueueAck(packet) => packet.encode(writer),
-            Packet::DeleteQueue(packet) => packet.encode(writer),
-            Packet::DeleteQueueAck(packet) => packet.encode(writer),
+mod packet {
+    use std::io::Write;
 
-            // kv store
-            Packet::Put(packet) => packet.encode(writer),
-            Packet::PutAck(packet) => packet.encode(writer),
-            Packet::Get(packet) => packet.encode(writer),
-            Packet::GetAck(packet) => packet.encode(writer),
-            Packet::Delete(packet) => packet.encode(writer),
-            Packet::DeleteAck(packet) => packet.encode(writer),
+    use log::debug;
 
-            // internal system messages
-            Packet::Report(packet) => packet.encode(writer),
-            Packet::ReportAck(packet) => packet.encode(writer),
-            Packet::Join(packet) => packet.encode(writer),
-            Packet::JoinAck(packet) => packet.encode(writer),
-            Packet::Transfer(packet) => packet.encode(writer),
-            Packet::TransferAck(packet) => packet.encode(writer),
-            Packet::Ping(packet) => packet.encode(writer),
-            Packet::PingAck(packet) => packet.encode(writer),
-        }
-    }
-}
+    use crate::{Packet, Error, Encode};
 
-//
-// Option
-//
-
-impl<R, T> Decode<R> for Option<T>
-where
-    R: Read,
-    T: Decode<R>,
-{
-    fn decode(reader: &mut R) -> Result<Self, Error>
+    impl<W> Encode<W> for Packet
     where
-        Self: Sized,
+        W: Write,
     {
-        let is_some = u8::decode(reader)? > 0;
-        if is_some {
-            let value = T::decode(reader)?;
-            Ok(Some(value))
-        } else {
-            Ok(None)
-        }
-    }
-}
+        fn encode(&self, writer: &mut W) -> Result<(), Error> {
+            debug!("encode: {:?}", self);
+            match self {
+                // dequeue
+                Packet::Enqueue(packet) => packet.encode(writer),
+                Packet::EnqueueAck(packet) => packet.encode(writer),
+                Packet::Dequeue(packet) => packet.encode(writer),
+                Packet::DequeueAck(packet) => packet.encode(writer),
+                Packet::Peek(packet) => packet.encode(writer),
+                Packet::PeekAck(packet) => packet.encode(writer),
+                Packet::Len(packet) => packet.encode(writer),
+                Packet::LenAck(packet) => packet.encode(writer),
+                Packet::CreateQueue(packet) => packet.encode(writer),
+                Packet::CreateQueueAck(packet) => packet.encode(writer),
+                Packet::DeleteQueue(packet) => packet.encode(writer),
+                Packet::DeleteQueueAck(packet) => packet.encode(writer),
 
-impl<W, T> Encode<W> for Option<T>
-where
-    W: Write,
-    T: Encode<W>,
-{
-    fn encode(&self, writer: &mut W) -> Result<(), Error> {
-        match self {
-            Some(value) => {
-                1u8.encode(writer)?;
-                value.encode(writer)?;
-            }
-            None => {
-                0u8.encode(writer)?;
+                // kv store
+                Packet::Put(packet) => packet.encode(writer),
+                Packet::PutAck(packet) => packet.encode(writer),
+                Packet::Get(packet) => packet.encode(writer),
+                Packet::GetAck(packet) => packet.encode(writer),
+                Packet::Delete(packet) => packet.encode(writer),
+                Packet::DeleteAck(packet) => packet.encode(writer),
+
+                // internal system messages
+                Packet::Report(packet) => packet.encode(writer),
+                Packet::ReportAck(packet) => packet.encode(writer),
+                Packet::Join(packet) => packet.encode(writer),
+                Packet::JoinAck(packet) => packet.encode(writer),
+                Packet::Transfer(packet) => packet.encode(writer),
+                Packet::TransferAck(packet) => packet.encode(writer),
+                Packet::Ping(packet) => packet.encode(writer),
+                Packet::PingAck(packet) => packet.encode(writer),
             }
         }
-
-        Ok(())
     }
-}
 
-//
-// String + Vec impls
-//
-
-impl<R> Decode<R> for String
-where
-    R: Read,
-{
-    fn decode(reader: &mut R) -> Result<Self, Error>
+    impl<W> Encode<W> for Vec<Packet>
     where
-        Self: Sized,
+        W: Write,
     {
-        let mut len = [0; 2];
-        reader.read_exact(&mut len).map_err(Error::Decode)?;
-        let len = u16::from_be_bytes(len);
-        let mut bytes = vec![0; len as usize];
-        reader.read_exact(&mut bytes).map_err(Error::Decode)?;
-        String::from_utf8(bytes).map_err(Error::DecodeString)
-    }
-}
+        fn encode(&self, writer: &mut W) -> Result<(), Error> {
+            self.len().encode(writer)?;
 
-impl<W> Encode<W> for String
-where
-    W: Write,
-{
-    fn encode(&self, writer: &mut W) -> Result<(), Error> {
-        let bytes = self.as_bytes();
-        let len = bytes.len() as u16;
-        writer
-            .write_all(&len.to_be_bytes())
-            .map_err(Error::Encode)?;
-        writer.write_all(bytes).map_err(Error::Encode)?;
-        Ok(())
-    }
-}
+            for packet in self {
+                packet.encode(writer)?;
+            }
 
-impl<R> Decode<R> for Vec<u8>
-where
-    R: Read,
-{
-    fn decode(reader: &mut R) -> Result<Self, Error>
-    where
-        Self: Sized,
-    {
-        let mut len = [0; 8];
-        reader.read_exact(&mut len).map_err(Error::Decode)?;
-        let len = u64::from_be_bytes(len);
-        let mut bytes = vec![0; len as usize];
-        reader.read_exact(&mut bytes).map_err(Error::Decode)?;
-        Ok(bytes)
-    }
-}
-
-impl<W> Encode<W> for Vec<u8>
-where
-    W: Write,
-{
-    fn encode(&self, writer: &mut W) -> Result<(), Error> {
-        let len = self.len() as u64;
-        writer
-            .write_all(&len.to_be_bytes())
-            .map_err(Error::Encode)?;
-        writer.write_all(self).map_err(Error::Encode)?;
-        Ok(())
-    }
-}
-
-impl<W> Encode<W> for &[u8]
-where
-    W: Write,
-{
-    fn encode(&self, writer: &mut W) -> Result<(), Error> {
-        let len = self.len() as u64;
-        writer
-            .write_all(&len.to_be_bytes())
-            .map_err(Error::Encode)?;
-        writer.write_all(self).map_err(Error::Encode)?;
-        Ok(())
-    }
-}
-
-impl<R> Decode<R> for Vec<Role>
-where
-    R: Read,
-{
-    fn decode(reader: &mut R) -> Result<Self, Error>
-    where
-        Self: Sized,
-    {
-        let mut len = [0; 8];
-        reader.read_exact(&mut len).map_err(Error::Decode)?;
-        let len = u64::from_be_bytes(len) as usize;
-        let mut bytes = Vec::with_capacity(len);
-
-        for _ in 0..len {
-            bytes.push(Role::decode(reader)?);
+            Ok(())
         }
-
-        Ok(bytes)
     }
 }
 
-impl<W> Encode<W> for Vec<Role>
-where
-    W: Write,
-{
-    fn encode(&self, writer: &mut W) -> Result<(), Error> {
-        let len = self.len() as u64;
-        writer
-            .write_all(&len.to_be_bytes())
-            .map_err(Error::Encode)?;
+mod integer {
+    use std::io::{Read, Write};
 
-        for role in self {
-            role.encode(writer)?;
+    use crate::{Decode, Encode, Error};
+
+    macro_rules! impl_integer_decode {
+        ($($t:ty),+) => {
+            $(
+                impl<R> Decode<R> for $t
+                where
+                    R: Read,
+                {
+                    fn decode(reader: &mut R) -> Result<Self, Error>
+                    where
+                        Self: Sized,
+                    {
+                        let mut bytes = [0; std::mem::size_of::<$t>()];
+                        reader.read_exact(&mut bytes).map_err(Error::Decode)?;
+                        Ok(<$t>::from_be_bytes(bytes))
+                    }
+                }
+            )+
+        };
+    }
+
+    impl_integer_decode!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
+
+    macro_rules! impl_integer_encode {
+        ($($t:ty),+) => {
+            $(
+                impl<W> Encode<W> for $t
+                where
+                    W: Write,
+                {
+                    fn encode(&self, writer: &mut W) -> Result<(), Error> {
+                        writer
+                            .write_all(&self.to_be_bytes())
+                            .map_err(Error::Encode)?;
+                        Ok(())
+                    }
+                }
+            )+
+        };
+    }
+
+    impl_integer_encode!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
+}
+
+mod option {
+    use std::io::{Read, Write};
+
+    use crate::{Decode, Encode, Error};
+
+    impl<R, T> Decode<R> for Option<T>
+    where
+        R: Read,
+        T: Decode<R>,
+    {
+        fn decode(reader: &mut R) -> Result<Self, Error>
+        where
+            Self: Sized,
+        {
+            let is_some = u8::decode(reader)? > 0;
+            if is_some {
+                let value = T::decode(reader)?;
+                Ok(Some(value))
+            } else {
+                Ok(None)
+            }
         }
-
-        Ok(())
     }
-}
 
-//
-// integer types
-//
-
-impl<R> Decode<R> for u8
-where
-    R: Read,
-{
-    fn decode(reader: &mut R) -> Result<Self, Error>
+    impl<W, T> Encode<W> for Option<T>
     where
-        Self: Sized,
+        W: Write,
+        T: Encode<W>,
     {
-        let mut bytes = [0; 1];
-        reader.read_exact(&mut bytes).map_err(Error::Decode)?;
-        Ok(bytes[0])
+        fn encode(&self, writer: &mut W) -> Result<(), Error> {
+            match self {
+                Some(value) => {
+                    1u8.encode(writer)?;
+                    value.encode(writer)?;
+                }
+                None => {
+                    0u8.encode(writer)?;
+                }
+            }
+
+            Ok(())
+        }
     }
 }
 
-impl<W> Encode<W> for u8
-where
-    W: Write,
-{
-    fn encode(&self, writer: &mut W) -> Result<(), Error> {
-        writer
-            .write_all(&self.to_be_bytes())
-            .map_err(Error::Encode)?;
-        Ok(())
-    }
-}
+mod string {
+    use std::io::{Read, Write};
 
-impl<R> Decode<R> for u16
-where
-    R: Read,
-{
-    fn decode(reader: &mut R) -> Result<Self, Error>
+    use crate::{Decode, Encode, Error};
+
+    impl<R> Decode<R> for String
     where
-        Self: Sized,
+        R: Read,
     {
-        let mut bytes = [0; 2];
-        reader.read_exact(&mut bytes).map_err(Error::Decode)?;
-        Ok(u16::from_be_bytes(bytes))
+        fn decode(reader: &mut R) -> Result<Self, Error>
+        where
+            Self: Sized,
+        {
+            let mut len = [0; 8];
+            reader.read_exact(&mut len).map_err(Error::Decode)?;
+            let len = u64::from_be_bytes(len);
+            let mut bytes = vec![0; len as usize];
+            reader.read_exact(&mut bytes).map_err(Error::Decode)?;
+            String::from_utf8(bytes).map_err(Error::DecodeString)
+        }
     }
-}
 
-impl<W> Encode<W> for u16
-where
-    W: Write,
-{
-    fn encode(&self, writer: &mut W) -> Result<(), Error> {
-        writer
-            .write_all(&self.to_be_bytes())
-            .map_err(Error::Encode)?;
-        Ok(())
-    }
-}
-
-impl<R> Decode<R> for u32
-where
-    R: Read,
-{
-    fn decode(reader: &mut R) -> Result<Self, Error>
+    impl<W> Encode<W> for String
     where
-        Self: Sized,
+        W: Write,
     {
-        let mut bytes = [0; 4];
-        reader.read_exact(&mut bytes).map_err(Error::Decode)?;
-        Ok(u32::from_be_bytes(bytes))
+        fn encode(&self, writer: &mut W) -> Result<(), Error> {
+            let bytes = self.as_bytes();
+            let len = bytes.len() as u64;
+            writer
+                .write_all(&len.to_be_bytes())
+                .map_err(Error::Encode)?;
+            writer.write_all(bytes).map_err(Error::Encode)?;
+            Ok(())
+        }
     }
 }
 
-impl<W> Encode<W> for u32
-where
-    W: Write,
-{
-    fn encode(&self, writer: &mut W) -> Result<(), Error> {
-        writer
-            .write_all(&self.to_be_bytes())
-            .map_err(Error::Encode)?;
-        Ok(())
-    }
-}
+mod vector {
+    use std::io::{Read, Write};
 
-impl<R> Decode<R> for u64
-where
-    R: Read,
-{
-    fn decode(reader: &mut R) -> Result<Self, Error>
+    use crate::{Decode, Encode, Error};
+
+    impl<R> Decode<R> for Vec<u8>
     where
-        Self: Sized,
+        R: Read,
     {
-        let mut bytes = [0; 8];
-        reader.read_exact(&mut bytes).map_err(Error::Decode)?;
-        Ok(u64::from_be_bytes(bytes))
+        fn decode(reader: &mut R) -> Result<Self, Error>
+        where
+            Self: Sized,
+        {
+            let len = usize::decode(reader)?;
+            let mut bytes = vec![0; len as usize];
+            reader.read_exact(&mut bytes).map_err(Error::Decode)?;
+            Ok(bytes)
+        }
     }
-}
 
-impl<W> Encode<W> for u64
-where
-    W: Write,
-{
-    fn encode(&self, writer: &mut W) -> Result<(), Error> {
-        writer
-            .write_all(&self.to_be_bytes())
-            .map_err(Error::Encode)?;
-        Ok(())
-    }
-}
-
-impl<R> Decode<R> for u128
-where
-    R: Read,
-{
-    fn decode(reader: &mut R) -> Result<Self, Error>
+    impl<W> Encode<W> for Vec<u8>
     where
-        Self: Sized,
+        W: Write,
     {
-        let mut bytes = [0; 16];
-        reader.read_exact(&mut bytes).map_err(Error::Decode)?;
-        Ok(u128::from_be_bytes(bytes))
-    }
-}
+        fn encode(&self, writer: &mut W) -> Result<(), Error> {
+            self.len().encode(writer)?;
 
-impl<W> Encode<W> for u128
-where
-    W: Write,
-{
-    fn encode(&self, writer: &mut W) -> Result<(), Error> {
-        writer
-            .write_all(&self.to_be_bytes())
-            .map_err(Error::Encode)?;
-        Ok(())
-    }
-}
+            writer.write_all(self).map_err(Error::Encode)?;
 
-impl<R> Decode<R> for usize
-where
-    R: Read,
-{
-    fn decode(reader: &mut R) -> Result<Self, Error>
-    where
-        Self: Sized,
-    {
-        let mut bytes = [0; 8];
-        reader.read_exact(&mut bytes).map_err(Error::Decode)?;
-        Ok(usize::from_be_bytes(bytes))
-    }
-}
-
-impl<W> Encode<W> for usize
-where
-    W: Write,
-{
-    fn encode(&self, writer: &mut W) -> Result<(), Error> {
-        writer
-            .write_all(&self.to_be_bytes())
-            .map_err(Error::Encode)?;
-        Ok(())
+            Ok(())
+        }
     }
 }
 

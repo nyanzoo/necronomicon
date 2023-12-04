@@ -1,6 +1,6 @@
-mod delete_ack;
-use std::{io::Read, io::Write};
+use std::io::{Read, Write};
 
+mod delete_ack;
 pub use delete_ack::DeleteAck;
 
 mod delete;
