@@ -223,7 +223,7 @@ mod packet {
 
     use log::debug;
 
-    use crate::{Packet, Error, Encode};
+    use crate::{Encode, Error, Packet};
 
     impl<W> Encode<W> for Packet
     where

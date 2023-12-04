@@ -3,10 +3,7 @@ use std::{
     io::{Read, Write},
 };
 
-use crate::{
-    dequeue_codec, error::Error, kv_store_codec, system_codec, Decode,
-    Encode,
-};
+use crate::{dequeue_codec, error::Error, kv_store_codec, system_codec, Decode, Encode};
 
 pub struct VersionAndUuid {
     pub version: u8,
