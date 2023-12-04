@@ -267,13 +267,12 @@ mod packet {
         }
     }
 
+    // NOTE: probably tests only
     impl<W> Encode<W> for Vec<Packet>
     where
         W: Write,
     {
         fn encode(&self, writer: &mut W) -> Result<(), Error> {
-            self.len().encode(writer)?;
-
             for packet in self {
                 packet.encode(writer)?;
             }
