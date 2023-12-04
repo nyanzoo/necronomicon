@@ -100,6 +100,38 @@ where
     }
 }
 
+impl<R> Decode<R> for Vec<Role>
+where
+    R: Read,
+{
+    fn decode(reader: &mut R) -> Result<Self, crate::Error>
+    where
+        Self: Sized,
+    {
+        let len = usize::decode(reader)?;
+        let mut roles = Vec::with_capacity(len);
+        for _ in 0..len {
+            roles.push(Role::decode(reader)?);
+        }
+
+        Ok(roles)
+    }
+}
+
+impl<W> Encode<W> for Vec<Role>
+where
+    W: Write,
+{
+    fn encode(&self, writer: &mut W) -> Result<(), crate::Error> {
+        self.len().encode(writer)?;
+        for role in self {
+            role.encode(writer)?;
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Position {
     // Backends
