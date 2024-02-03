@@ -517,6 +517,23 @@ mod slice {
     }
 }
 
+mod string {
+    use std::io::{Read, Write};
+
+    use crate::{Encode, Error};
+
+    impl<W> Encode<W> for &[u8]
+    where
+        W: Write,
+    {
+        fn encode(&self, writer: &mut W) -> Result<(), Error> {
+            self.len().encode(writer)?;
+            writer.write_all(self).map_err(Error::Encode)?;
+            Ok(())
+        }
+    }
+}
+
 mod vector {
     use std::io::{Read, Write};
 
