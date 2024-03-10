@@ -1,9 +1,9 @@
 use std::{fmt::Debug, hash::Hash, sync::Arc};
 
 mod block;
+pub use block::{Block, BlockMut};
 
 mod data;
-use crossbeam_channel::Sender;
 pub use data::BinaryData;
 
 mod owned;
@@ -17,8 +17,6 @@ pub use shared::SharedImpl;
 
 mod str;
 pub use str::ByteStr;
-
-use self::block::Block;
 
 /// A thread-safe read-only buffer.
 pub trait Shared:
@@ -98,29 +96,29 @@ pub trait Pool {
 /// A mechanism for releasing memory back to the pool.
 /// When this is dropped, it releases the memory back to the pool.
 #[derive(Clone)]
-pub(crate) struct Releaser(Arc<Sender<Block>>);
+pub(crate) struct Releaser(Arc<SyncSender<()>>);
 
 impl Releaser {
-    pub fn new(sender: Sender<Block>) -> Self {
+    pub fn new(sender: SyncSender<()>) -> Self {
         Self(Arc::new(sender))
     }
+}
 
-    fn release(&mut self, buffer: &mut Block) {
+impl Drop for Releaser {
+    fn drop(&mut self) {
         if Arc::strong_count(&self.0) == 1 {
-            self.0
-                .send(buffer.release())
-                .expect("failed to release buffer");
+            self.0.send(()).expect("failed to release buffer");
         }
     }
 }
 
-#[cfg(any(test, feature = "test"))]
-pub fn binary_data(data: &[u8]) -> BinaryData<SharedImpl> {
-    BinaryData::new(SharedImpl::test_new(data))
+#[cfg(test)]
+pub(crate) fn binary_data(data: &[u8]) -> BinaryData<SharedImpl> {
+    BinaryData::new(data.len(), SharedImpl::test_new(data))
 }
 
-#[cfg(any(test, feature = "test"))]
-pub fn byte_str(data: &[u8]) -> ByteStr<SharedImpl> {
+#[cfg(test)]
+pub(crate) fn byte_str(data: &[u8]) -> ByteStr<SharedImpl> {
     ByteStr::new(binary_data(data))
 }
 

@@ -65,7 +65,7 @@ where
     {
         assert_eq!(header.kind, Kind::Len);
 
-        let path = ByteStr::decode_owned(reader, buffer)?;
+        let path = ByteStr::decode(reader, buffer)?;
 
         Ok(Self { header, path })
     }

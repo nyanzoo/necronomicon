@@ -3,29 +3,21 @@ use log::trace;
 
 use super::{block::Block, BufferOwner, OwnedImpl, Pool, Releaser};
 
-#[derive(Clone)]
 pub struct PoolImpl {
-    tx: Sender<Block>,
-    rx: Receiver<Block>,
-
+    tx: SyncSender<()>,
+    rx: Receiver<()>,
     block_size: usize,
-    capacity: usize,
 }
 
 impl PoolImpl {
     pub fn new(block_size: usize, capacity: usize) -> Self {
-        let (tx, rx) = bounded(capacity);
+        let (tx, rx) = sync_channel(capacity);
 
         for _ in 0..capacity {
             tx.send(Block::new(block_size)).expect("fill pool");
         }
 
-        Self {
-            tx,
-            rx,
-            block_size,
-            capacity,
-        }
+        Self { tx, rx, block_size }
     }
 }
 

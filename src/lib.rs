@@ -2,7 +2,8 @@
 
 use std::io::{Read, Write};
 
-use log::{debug, trace};
+use buffer::{Owned, Shared};
+use log::debug;
 
 mod buffer;
 #[cfg(any(test, feature = "test"))]
@@ -28,7 +29,7 @@ mod error;
 pub use error::Error;
 
 mod header;
-pub use header::{Header, Uuid, Version};
+pub use header::Header;
 
 mod kind;
 pub use kind::Kind;
@@ -220,7 +221,6 @@ where
     Ok(packet)
 }
 
-/// # Description
 /// Attempts to fully decode a `Packet` from the given reader.
 /// We use a buffer to avoid unnecessary allocations, but if the buffer is not large enough, we will
 /// error.
@@ -246,18 +246,12 @@ where
     R: Read,
     O: Owned,
 {
-    trace!("previous_decoded_header: {:?}", previous_decoded_header);
     // decoding the header does not use up buffer space.
-    let header = if let Some(header) = previous_decoded_header {
-        header
-    } else {
-        Header::decode(reader)?
-    };
+    let header = Header::decode(reader, buffer)?;
 
     if header.len > buffer.unfilled_capacity() {
-        return Err(Error::BufferTooSmallForPacketDecode {
-            header,
-            size: header.len,
+        return Err(Error::OwnedRemaining {
+            acquire: header.len as usize,
             capacity: buffer.unfilled_capacity(),
         });
     }
@@ -269,49 +263,12 @@ where
 // Decode
 //
 
-/// # Description
-/// The `DecodeOwned` trait is used to decode a value from a reader and place in an owned.
-///
-/// This does require the data to be copied out of the buffer and be owned by the buffer.
-pub trait DecodeOwned<R, O>
+pub trait Decode<R, O>
 where
     R: Read,
     O: Owned,
 {
-    /// # Description
-    /// Copies data out of the reader and into the owned buffer.
-    ///
-    /// # Arguments
-    /// * `reader` - The reader to decode from.
-    /// * `buffer` - The buffer to place the decoded value into.
-    ///
-    /// # Errors
-    /// This function will return an error if the data cannot be decoded from the reader.
-    ///
-    /// # Returns
-    /// The decoded value.
-    fn decode_owned(reader: &mut R, buffer: &mut O) -> Result<Self, Error>
-    where
-        Self: Sized;
-}
-
-/// # Description
-/// The `Decode` trait is used to decode a value from a reader.
-///
-/// This does require the data to be copied out of the buffer but not be owned by the buffer.
-pub trait Decode<R> {
-    /// # Description
-    /// Takes data from the reader and decodes it into a value.
-    ///
-    /// # Arguments
-    /// * `reader` - The reader to decode from.
-    ///
-    /// # Errors
-    /// This function will return an error if the data cannot be decoded from the reader.
-    ///
-    /// # Returns
-    /// The decoded value.
-    fn decode(reader: &mut R) -> Result<Self, Error>
+    fn decode(reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized;
 }
@@ -395,16 +352,17 @@ mod packet {
 mod integer {
     use std::io::{Read, Write};
 
-    use crate::{Decode, Encode, Error};
+    use crate::{buffer::Owned, Decode, Encode, Error};
 
     macro_rules! impl_integer_decode {
         ($($t:ty),+) => {
             $(
-                impl<R> Decode<R> for $t
+                impl<R, O> Decode<R, O> for $t
                 where
                     R: Read,
+                    O: Owned,
                 {
-                    fn decode(reader: &mut R) -> Result<Self, Error>
+                    fn decode(reader: &mut R, _: &mut O) -> Result<Self, Error>
                     where
                         Self: Sized,
                     {
@@ -450,20 +408,21 @@ mod integer {
 mod option {
     use std::io::{Read, Write};
 
-    use crate::{buffer::Owned, Decode, DecodeOwned, Encode, Error};
+    use crate::{buffer::Owned, Decode, Encode, Error};
 
-    impl<R, T> Decode<R> for Option<T>
+    impl<R, T, O> Decode<R, O> for Option<T>
     where
         R: Read,
-        T: Decode<R>,
+        T: Decode<R, O>,
+        O: Owned,
     {
-        fn decode(reader: &mut R) -> Result<Self, Error>
+        fn decode(reader: &mut R, buffer: &mut O) -> Result<Self, Error>
         where
             Self: Sized,
         {
-            let is_some = u8::decode(reader)? > 0;
+            let is_some = u8::decode(reader, buffer)? > 0;
             if is_some {
-                let value = T::decode(reader)?;
+                let value = T::decode(reader, buffer)?;
                 Ok(Some(value))
             } else {
                 Ok(None)
@@ -529,61 +488,25 @@ mod slice {
     }
 }
 
-mod string {
-    use std::io::{Read, Write};
-
-    use crate::{Encode, Error};
-
-    impl<W> Encode<W> for &[u8]
-    where
-        W: Write,
-    {
-        fn encode(&self, writer: &mut W) -> Result<(), Error> {
-            self.len().encode(writer)?;
-            writer.write_all(self).map_err(Error::Encode)?;
-            Ok(())
-        }
-    }
-}
-
 mod vector {
     use std::io::{Read, Write};
 
-    use crate::{buffer::Owned, Decode, DecodeOwned, Encode, Error};
+    use crate::{buffer::Owned, Decode, Encode, Error};
 
-    impl<R, T> Decode<R> for Vec<T>
+    impl<R, T, O> Decode<R, O> for Vec<T>
     where
         R: Read,
-        T: Decode<R>,
-    {
-        fn decode(reader: &mut R) -> Result<Self, Error>
-        where
-            Self: Sized,
-        {
-            let len = usize::decode(reader)?;
-            let mut vec = Vec::with_capacity(len);
-            for _ in 0..len {
-                vec.push(T::decode(reader)?);
-            }
-
-            Ok(vec)
-        }
-    }
-
-    impl<R, T, O> DecodeOwned<R, O> for Vec<T>
-    where
-        R: Read,
-        T: DecodeOwned<R, O>,
+        T: Decode<R, O>,
         O: Owned,
     {
-        fn decode_owned(reader: &mut R, buffer: &mut O) -> Result<Self, Error>
+        fn decode(reader: &mut R, buffer: &mut O) -> Result<Self, Error>
         where
             Self: Sized,
         {
-            let len = usize::decode(reader)?;
+            let len = usize::decode(reader, buffer)?;
             let mut vec = Vec::with_capacity(len);
             for _ in 0..len {
-                vec.push(T::decode_owned(reader, buffer)?);
+                vec.push(T::decode(reader, buffer)?);
             }
 
             Ok(vec)
@@ -628,7 +551,7 @@ pub(crate) mod tests {
         let pool = PoolImpl::new(1024, 1);
         let mut buffer = pool.acquire("full decode");
 
-        let decoded = full_decode(&mut cursor, &mut buffer, None).unwrap();
+        let decoded = full_decode(&mut cursor, &mut buffer).unwrap();
         assert_eq!(val, decoded);
     }
 
@@ -674,7 +597,7 @@ pub(crate) mod tests {
         let pool = PoolImpl::new(1024, 1);
         let mut buffer = pool.acquire("decode owned T");
 
-        let decoded = T::decode_owned(&mut cursor, &mut buffer).unwrap();
+        let decoded = T::decode(&mut cursor, &mut buffer).unwrap();
         assert_eq!(val, decoded);
     }
 
@@ -744,7 +667,6 @@ pub(crate) mod tests {
                 123,
                 456,
                 byte_str(b"/tmp/kitties"),
-                42,
                 binary_data(&[1, 2, 3]),
             )),
             Packet::TransferAck(TransferAck::new(Response::success())),

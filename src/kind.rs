@@ -88,12 +88,13 @@ impl Debug for Kind {
     }
 }
 
-impl<R> Decode<R> for Kind
+impl<R, O> Decode<R, O> for Kind
 where
     R: Read,
+    O: Owned,
 {
-    fn decode(reader: &mut R) -> Result<Self, Error> {
-        u8::decode(reader).map(Self::from)
+    fn decode(reader: &mut R, buffer: &mut O) -> Result<Self, Error> {
+        u8::decode(reader, buffer).map(Self::from)
     }
 }
 
