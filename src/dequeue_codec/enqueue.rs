@@ -1,21 +1,36 @@
 use std::io::{Read, Write};
 
-use crate::{header::VersionAndUuid, Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+use crate::{
+    buffer::{BinaryData, ByteStr, Owned, Shared},
+    header::{Uuid, Version},
+    Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+};
 
 use super::EnqueueAck;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub struct Enqueue {
+pub struct Enqueue<S>
+where
+    S: Shared,
+{
     pub(crate) header: Header,
-    pub(crate) path: String,
-    pub(crate) value: Vec<u8>,
+    pub(crate) path: ByteStr<S>,
+    pub(crate) value: BinaryData<S>,
 }
 
-impl Enqueue {
-    pub fn new(version_and_uuid: impl Into<VersionAndUuid>, path: String, value: Vec<u8>) -> Self {
+impl<S> Enqueue<S>
+where
+    S: Shared,
+{
+    pub fn new(
+        version: impl Into<Version>,
+        uuid: impl Into<Uuid>,
+        path: ByteStr<S>,
+        value: BinaryData<S>,
+    ) -> Self {
         Self {
-            header: version_and_uuid.into().into_header(Kind::Enqueue),
+            header: Header::new(Kind::Enqueue, version, uuid, path.len() + value.len()),
             path,
             value,
         }
@@ -25,41 +40,42 @@ impl Enqueue {
         self.header
     }
 
-    pub fn path(&self) -> &str {
+    pub fn path(&self) -> &ByteStr<S> {
         &self.path
     }
 
-    pub fn value(&self) -> &[u8] {
+    pub fn value(&self) -> &BinaryData<S> {
         &self.value
     }
 
     pub fn ack(self) -> EnqueueAck {
         EnqueueAck {
-            header: Header::new(Kind::EnqueueAck, self.header.version(), self.header.uuid()),
+            header: Header::new(Kind::EnqueueAck, self.header.version, self.header.uuid, 0),
             response_code: SUCCESS,
         }
     }
 
     pub fn nack(self, response_code: u8) -> EnqueueAck {
         EnqueueAck {
-            header: Header::new(Kind::EnqueueAck, self.header.version(), self.header.uuid()),
+            header: Header::new(Kind::EnqueueAck, self.header.version, self.header.uuid, 0),
             response_code,
         }
     }
 }
 
-impl<R> PartialDecode<R> for Enqueue
+impl<R, O> PartialDecode<R, O> for Enqueue<O::Shared>
 where
     R: Read,
+    O: Owned,
 {
-    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::Enqueue);
+        assert_eq!(header.kind, Kind::Enqueue);
 
-        let path = String::decode(reader)?;
-        let value = Vec::<u8>::decode(reader)?;
+        let path = ByteStr::decode(reader, buffer)?;
+        let value = BinaryData::decode(reader, buffer)?;
 
         Ok(Self {
             header,
@@ -69,9 +85,10 @@ where
     }
 }
 
-impl<W> Encode<W> for Enqueue
+impl<W, S> Encode<W> for Enqueue<S>
 where
     W: Write,
+    S: Shared,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
@@ -84,23 +101,17 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::test_encode_decode_packet, Ack, Kind, INTERNAL_ERROR, SUCCESS};
+    use crate::{
+        buffer::{binary_data, byte_str},
+        tests::verify_encode_decode,
+        Ack, Packet, INTERNAL_ERROR, SUCCESS,
+    };
 
     use super::Enqueue;
 
     #[test]
-    fn test_new() {
-        let enqueue = Enqueue::new((0, 0), "test".to_string(), vec![1, 2, 3]);
-
-        assert_eq!(enqueue.header().version(), 0);
-        assert_eq!(enqueue.header().uuid(), 0);
-        assert_eq!(enqueue.path(), "test");
-        assert_eq!(enqueue.value(), &[1, 2, 3]);
-    }
-
-    #[test]
     fn test_acks() {
-        let enqueue = Enqueue::new((0, 0), "test".to_string(), vec![1, 2, 3]);
+        let enqueue = Enqueue::new(0, 0, byte_str(b"test"), binary_data(&[1, 2, 3]));
 
         let ack = enqueue.clone().ack();
         assert_eq!(ack.response_code(), SUCCESS);
@@ -111,12 +122,11 @@ mod test {
 
     #[test]
     fn test_encode_decode() {
-        test_encode_decode_packet!(
-            Kind::Enqueue,
-            Enqueue {
-                path: "test".to_string(),
-                value: vec![1, 2, 3],
-            }
-        );
+        verify_encode_decode(Packet::Enqueue(Enqueue::new(
+            1,
+            1,
+            byte_str(b"test"),
+            binary_data(&[1, 2, 3]),
+        )));
     }
 }

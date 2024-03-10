@@ -1,20 +1,30 @@
 use std::io::{Read, Write};
 
-use crate::{header::VersionAndUuid, Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+use crate::{
+    buffer::{Owned, Shared},
+    header::{Uuid, Version},
+    Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+};
 
 use super::{Position, ReportAck};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub struct Report {
+pub struct Report<S>
+where
+    S: Shared,
+{
     pub(crate) header: Header,
-    pub(crate) position: Position,
+    pub(crate) position: Position<S>,
 }
 
-impl Report {
-    pub fn new(version_and_uuid: impl Into<VersionAndUuid>, position: Position) -> Self {
+impl<S> Report<S>
+where
+    S: Shared,
+{
+    pub fn new(version: impl Into<Version>, uuid: impl Into<Uuid>, position: Position<S>) -> Self {
         Self {
-            header: version_and_uuid.into().into_header(Kind::Report),
+            header: Header::new(Kind::Report, version, uuid, position.len()),
             position,
         }
     }
@@ -23,44 +33,46 @@ impl Report {
         self.header
     }
 
-    pub fn position(&self) -> &Position {
+    pub fn position(&self) -> &Position<S> {
         &self.position
     }
 
     pub fn ack(self) -> ReportAck {
         ReportAck {
-            header: Header::new(Kind::ReportAck, self.header.version(), self.header.uuid()),
+            header: Header::new(Kind::ReportAck, self.header.version, self.header.uuid, 0),
             response_code: SUCCESS,
         }
     }
 
     pub fn nack(self, response_code: u8) -> ReportAck {
         ReportAck {
-            header: Header::new(Kind::ReportAck, self.header.version(), self.header.uuid()),
+            header: Header::new(Kind::ReportAck, self.header.version, self.header.uuid, 0),
             response_code,
         }
     }
 }
 
-impl<R> PartialDecode<R> for Report
+impl<R, O> PartialDecode<R, O> for Report<O::Shared>
 where
     R: Read,
+    O: Owned,
 {
-    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::Report);
+        assert_eq!(header.kind, Kind::Report);
 
-        let position = Position::decode(reader)?;
+        let position = Position::decode(reader, buffer)?;
 
         Ok(Self { header, position })
     }
 }
 
-impl<W> Encode<W> for Report
+impl<W, S> Encode<W> for Report<S>
 where
     W: Write,
+    S: Shared,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
@@ -73,38 +85,19 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        system_codec::Position, tests::test_encode_decode_packet, Ack, Kind, INTERNAL_ERROR,
-        SUCCESS,
+        buffer::byte_str, system_codec::Position, tests::verify_encode_decode, Ack, Packet,
+        INTERNAL_ERROR, SUCCESS,
     };
 
     use super::Report;
 
     #[test]
-    fn test_new() {
-        let report = Report::new(
-            (1, 2),
-            Position::Head {
-                next: "next".to_owned(),
-            },
-        );
-
-        assert_eq!(report.header().kind(), Kind::Report);
-        assert_eq!(report.header().version(), 1);
-        assert_eq!(report.header().uuid(), 2);
-        assert_eq!(
-            report.position(),
-            &Position::Head {
-                next: "next".to_owned(),
-            }
-        );
-    }
-
-    #[test]
     fn test_ack() {
         let report = Report::new(
-            (1, 2),
+            1,
+            2,
             Position::Head {
-                next: "next".to_owned(),
+                next: byte_str(b"next"),
             },
         );
 
@@ -117,13 +110,12 @@ mod test {
 
     #[test]
     fn test_encode_decode() {
-        test_encode_decode_packet!(
-            Kind::Report,
-            Report {
-                position: Position::Head {
-                    next: "next".to_owned(),
-                },
-            }
-        );
+        verify_encode_decode(Packet::Report(Report::new(
+            1,
+            2,
+            Position::Head {
+                next: byte_str(b"next"),
+            },
+        )));
     }
 }

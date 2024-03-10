@@ -1,27 +1,34 @@
 use std::io::{Read, Write};
 
-use crate::{Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
+use crate::{
+    buffer::{BinaryData, Owned, Shared},
+    Ack, Decode, Encode, Error, Header, Kind, PartialDecode,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub struct PeekAck {
+pub struct PeekAck<S>
+where
+    S: Shared,
+{
     pub(crate) header: Header,
     pub(crate) response_code: u8,
-    pub(crate) value: Vec<u8>,
+    pub(crate) value: Option<BinaryData<S>>,
 }
 
-impl<R> PartialDecode<R> for PeekAck
+impl<R, O> PartialDecode<R, O> for PeekAck<O::Shared>
 where
     R: Read,
+    O: Owned,
 {
-    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::PeekAck);
+        assert_eq!(header.kind, Kind::PeekAck);
 
-        let response_code = u8::decode(reader)?;
-        let value = Vec::<u8>::decode(reader)?;
+        let response_code = u8::decode(reader, buffer)?;
+        let value = Option::decode(reader, buffer)?;
 
         Ok(Self {
             header,
@@ -31,9 +38,10 @@ where
     }
 }
 
-impl<W> Encode<W> for PeekAck
+impl<W, S> Encode<W> for PeekAck<S>
 where
     W: Write,
+    S: Shared,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
@@ -44,7 +52,10 @@ where
     }
 }
 
-impl Ack for PeekAck {
+impl<S> Ack for PeekAck<S>
+where
+    S: Shared,
+{
     fn header(&self) -> &Header {
         &self.header
     }
@@ -57,31 +68,25 @@ impl Ack for PeekAck {
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests::{test_ack_packet, test_encode_decode_packet},
-        Kind, SUCCESS,
+        buffer::{BinaryData, SharedImpl},
+        tests::verify_encode_decode,
+        Header, Kind, Packet, SUCCESS,
     };
 
     use super::PeekAck;
 
-    #[test]
-    fn test_encode_decode() {
-        test_encode_decode_packet!(
-            Kind::PeekAck,
+    impl PeekAck<SharedImpl> {
+        pub fn new(response_code: u8, value: Option<BinaryData<SharedImpl>>) -> Self {
             PeekAck {
-                response_code: SUCCESS,
-                value: vec![1, 2, 3],
+                header: Header::new(Kind::PeekAck, 1, 1, value.as_ref().map_or(0, |v| v.len())),
+                response_code,
+                value,
             }
-        );
+        }
     }
 
     #[test]
-    fn test_ack() {
-        test_ack_packet!(
-            Kind::PeekAck,
-            PeekAck {
-                response_code: SUCCESS,
-                value: vec![1, 2, 3],
-            }
-        );
+    fn test_encode_decode() {
+        verify_encode_decode(Packet::PeekAck(PeekAck::new(SUCCESS, None)));
     }
 }
