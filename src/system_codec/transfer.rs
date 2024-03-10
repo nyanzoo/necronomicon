@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{BinaryData, ByteStr, Owned, Shared},
     header::{Uuid, Version},
-    Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
 };
 
 use super::TransferAck;
@@ -16,7 +16,6 @@ where
 {
     pub(crate) header: Header,
     pub(crate) path: ByteStr<S>,
-    pub(crate) offset: u64,
     pub(crate) content: BinaryData<S>,
 }
 
@@ -28,7 +27,6 @@ where
         version: impl Into<Version>,
         uuid: impl Into<Uuid>,
         path: ByteStr<S>,
-        offset: u64,
         content: BinaryData<S>,
     ) -> Self {
         Self {
@@ -45,10 +43,6 @@ where
 
     pub fn path(&self) -> &ByteStr<S> {
         &self.path
-    }
-
-    pub fn offset(&self) -> u64 {
-        self.offset
     }
 
     pub fn content(&self) -> &BinaryData<S> {
@@ -81,9 +75,8 @@ where
     {
         assert_eq!(header.kind, Kind::Transfer);
 
-        let path = ByteStr::decode_owned(reader, buffer)?;
-        let offset = u64::decode(reader)?;
-        let content = BinaryData::decode_owned(reader, buffer)?;
+        let path = ByteStr::decode(reader, buffer)?;
+        let content = BinaryData::decode(reader, buffer)?;
 
         Ok(Self {
             header,
@@ -125,7 +118,6 @@ mod test {
             1,
             2,
             byte_str(b"/tmp/kitty"),
-            0,
             binary_data(&[0x01, 0x02, 0x03, 0x04]),
         );
 
@@ -138,12 +130,11 @@ mod test {
 
     #[test]
     fn test_encode_decode() {
-        test_encode_decode_packet!(
-            Kind::Transfer,
-            Transfer {
-                path: "/tmp/kitty".to_owned(),
-                content: vec![0x01, 0x02, 0x03, 0x04],
-            }
-        );
+        verify_encode_decode(Packet::Transfer(Transfer::new(
+            1,
+            2,
+            byte_str(b"/tmp/kitty"),
+            binary_data(&[0x01, 0x02, 0x03, 0x04]),
+        )));
     }
 }

@@ -2,29 +2,24 @@ use std::cmp;
 
 use buffer::Owned;
 
-use crate::buffer::{self, block::Block, Releaser};
+use crate::buffer::{self, block::BlockMut, Releaser};
 
 use super::shared::SharedImpl;
 
 pub struct OwnedImpl {
-    inner: Block,
+    inner: Box<BlockMut>,
     filled: usize,
     releaser: Releaser,
 }
 
 impl OwnedImpl {
-    pub(crate) fn new(inner: Block, releaser: Releaser) -> Self {
+    pub(crate) fn new(block_size: usize, releaser: Releaser) -> Self {
+        let inner = Box::new(BlockMut::new(block_size));
         Self {
             inner,
             filled: 0,
             releaser,
         }
-    }
-}
-
-impl Drop for OwnedImpl {
-    fn drop(&mut self) {
-        self.releaser.release(&mut self.inner);
     }
 }
 
@@ -54,12 +49,18 @@ impl Owned for OwnedImpl {
     }
 
     fn into_shared(self) -> Self::Shared {
-        SharedImpl::new(self.inner.clone(), self.releaser.clone())
+        let Self {
+            inner,
+            filled: _,
+            releaser,
+        } = self;
+
+        SharedImpl::new(inner.into_block(), releaser)
     }
 
     fn split_at(&mut self, index: usize) -> Self {
         let other = Self {
-            inner: self.inner.split_at(index),
+            inner: Box::new(self.inner.split_at(index)),
             filled: cmp::min(self.filled, index),
             releaser: self.releaser.clone(),
         };

@@ -29,7 +29,7 @@ pub use ping_ack::PingAck;
 
 use crate::{
     buffer::{ByteStr, Owned, Shared},
-    Decode, DecodeOwned, Encode,
+    Decode, Encode,
 };
 
 pub const START: u8 = 0x70;
@@ -72,7 +72,7 @@ impl<S> Role<S>
 where
     S: Shared,
 {
-    pub fn encode_len(&self) -> usize {
+    pub fn len(&self) -> usize {
         match self {
             Role::Backend(addr) | Role::Frontend(addr) => addr.len(),
             Role::Observer => 0,
@@ -104,19 +104,19 @@ where
     }
 }
 
-impl<R, O> DecodeOwned<R, O> for Role<O::Shared>
+impl<R, O> Decode<R, O> for Role<O::Shared>
 where
     R: Read,
     O: Owned,
 {
-    fn decode_owned(reader: &mut R, buffer: &mut O) -> Result<Self, crate::Error>
+    fn decode(reader: &mut R, buffer: &mut O) -> Result<Self, crate::Error>
     where
         Self: Sized,
     {
-        let kind = u8::decode(reader)?;
+        let kind = u8::decode(reader, buffer)?;
         match kind {
-            1 => Ok(Role::Backend(ByteStr::decode_owned(reader, buffer)?)),
-            2 => Ok(Role::Frontend(ByteStr::decode_owned(reader, buffer)?)),
+            1 => Ok(Role::Backend(ByteStr::decode(reader, buffer)?)),
+            2 => Ok(Role::Frontend(ByteStr::decode(reader, buffer)?)),
             3 => Ok(Role::Observer),
             _ => Err(crate::Error::SystemBadRole(kind)),
         }
@@ -156,7 +156,7 @@ impl<S> Position<S>
 where
     S: Shared,
 {
-    pub fn encode_len(&self) -> usize {
+    pub fn len(&self) -> usize {
         match self {
             Position::Head { next } | Position::Middle { next } => next.len(),
             Position::Tail { candidate } => candidate.as_ref().map(|c| c.len()).unwrap_or(0),
@@ -166,7 +166,7 @@ where
                     + tail.as_ref().map(|t| t.len()).unwrap_or(0)
             }
             Position::Observer { chain } => {
-                chain.iter().map(|role| role.encode_len()).sum::<usize>() + size_of::<u64>()
+                chain.iter().map(|role| role.len()).sum::<usize>() + size_of::<u64>()
             }
         }
     }
@@ -214,42 +214,42 @@ where
     }
 }
 
-impl<R, O> DecodeOwned<R, O> for Position<O::Shared>
+impl<R, O> Decode<R, O> for Position<O::Shared>
 where
     R: Read,
     O: Owned,
 {
-    fn decode_owned(reader: &mut R, buffer: &mut O) -> Result<Self, crate::Error>
+    fn decode(reader: &mut R, buffer: &mut O) -> Result<Self, crate::Error>
     where
         Self: Sized,
     {
-        let kind = u8::decode(reader)?;
+        let kind = u8::decode(reader, buffer)?;
         match kind {
             // Backends
             1 => {
-                let next = ByteStr::decode_owned(reader, buffer)?;
+                let next = ByteStr::decode(reader, buffer)?;
                 Ok(Position::Head { next })
             }
             2 => {
-                let next = ByteStr::decode_owned(reader, buffer)?;
+                let next = ByteStr::decode(reader, buffer)?;
                 Ok(Position::Middle { next })
             }
             3 => {
-                let candidate = Option::decode_owned(reader, buffer)?;
+                let candidate = Option::decode(reader, buffer)?;
                 Ok(Position::Tail { candidate })
             }
             4 => Ok(Position::Candidate),
 
             // Frontends
             5 => {
-                let head = Option::decode_owned(reader, buffer)?;
-                let tail = Option::decode_owned(reader, buffer)?;
+                let head = Option::decode(reader, buffer)?;
+                let tail = Option::decode(reader, buffer)?;
                 Ok(Position::Frontend { head, tail })
             }
 
             // Observer
             6 => {
-                let chain = Vec::decode_owned(reader, buffer)?;
+                let chain = Vec::decode(reader, buffer)?;
                 Ok(Position::Observer { chain })
             }
 
@@ -265,7 +265,7 @@ mod test {
 
     use crate::{
         buffer::{byte_str, Pool, PoolImpl},
-        DecodeOwned, Encode,
+        Decode, Encode,
     };
 
     use super::{Position, Role, END, START};
@@ -291,7 +291,7 @@ mod test {
             let pool = PoolImpl::new(1024, 1);
             let mut buffer = pool.acquire().unwrap();
 
-            let decoded = Role::decode_owned(&mut bytes.as_slice(), &mut buffer).unwrap();
+            let decoded = Role::decode(&mut bytes.as_slice(), &mut buffer).unwrap();
             assert_eq!(*role, decoded);
         }
 
@@ -299,7 +299,7 @@ mod test {
         let mut buffer = pool.acquire().unwrap();
 
         assert_matches!(
-            Role::decode_owned(&mut [0u8].as_ref(), &mut buffer),
+            Role::decode(&mut [0u8].as_ref(), &mut buffer),
             Err(crate::Error::SystemBadRole(0))
         );
     }
@@ -335,7 +335,7 @@ mod test {
             let pool = PoolImpl::new(1024, 1);
             let mut buffer = pool.acquire().unwrap();
 
-            let decoded = Position::decode_owned(&mut bytes.as_slice(), &mut buffer).unwrap();
+            let decoded = Position::decode(&mut bytes.as_slice(), &mut buffer).unwrap();
             assert_eq!(*position, decoded);
         }
 
@@ -343,7 +343,7 @@ mod test {
         let mut buffer = pool.acquire().unwrap();
 
         assert_matches!(
-            Position::decode_owned(&mut [0u8].as_ref(), &mut buffer),
+            Position::decode(&mut [0u8].as_ref(), &mut buffer),
             Err(crate::Error::SystemBadPosition(0))
         );
     }

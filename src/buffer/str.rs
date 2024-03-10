@@ -1,13 +1,10 @@
-use std::{
-    fmt::{Debug, Formatter},
-    io::{Read, Write},
-};
+use std::io::{Read, Write};
 
-use crate::{DecodeOwned, Encode, Error};
+use crate::{Decode, Encode, Error};
 
 use super::{BinaryData, Owned, Shared};
 
-#[derive(Clone, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ByteStr<S>(BinaryData<S>)
 where
     S: Shared;
@@ -20,20 +17,8 @@ where
         Self(data)
     }
 
-    pub fn from_owned<O>(data: impl AsRef<str>, owned: &mut O) -> Result<Self, Error>
-    where
-        O: Owned<Shared = S>,
-    {
-        let data = BinaryData::from_owned(data.as_ref().as_bytes(), owned)?;
-        Ok(Self::new(data))
-    }
-
     pub fn len(&self) -> usize {
         self.0.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
     }
 
     pub fn inner(&self) -> &BinaryData<S> {
@@ -48,30 +33,24 @@ where
         self.0.data().as_slice()
     }
 
-    pub fn as_str(&self) -> Result<&str, std::str::Utf8Error> {
+    pub fn as_str(&self) -> Result<&str, std::str::Utf8Error>
+    where
+        S: Into<Vec<u8>>,
+    {
         std::str::from_utf8(self.0.data().as_slice())
     }
 }
 
-impl<S> Debug for ByteStr<S>
-where
-    S: Shared,
-{
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.as_str().expect("str"))
-    }
-}
-
-impl<R, O> DecodeOwned<R, O> for ByteStr<O::Shared>
+impl<R, O> Decode<R, O> for ByteStr<O::Shared>
 where
     R: Read,
     O: Owned,
 {
-    fn decode_owned(reader: &mut R, buffer: &mut O) -> Result<Self, Error>
+    fn decode(reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        let data = BinaryData::decode_owned(reader, buffer)?;
+        let data = BinaryData::decode(reader, buffer)?;
 
         Ok(Self(data))
     }

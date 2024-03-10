@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{ByteStr, Owned, Shared},
     header::{Uuid, Version},
-    Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
 };
 
 use super::CreateAck;
@@ -84,8 +84,8 @@ where
     {
         assert_eq!(header.kind, Kind::CreateQueue);
 
-        let path = ByteStr::decode_owned(reader, buffer)?;
-        let node_size = u64::decode(reader)?;
+        let path = ByteStr::decode(reader, buffer)?;
+        let node_size = u64::decode(reader, buffer)?;
 
         Ok(Self {
             header,

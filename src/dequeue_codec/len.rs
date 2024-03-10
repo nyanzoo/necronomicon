@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{ByteStr, Owned, Shared},
     header::{Uuid, Version},
-    DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
 };
 
 use super::LenAck;
@@ -65,7 +65,7 @@ where
     {
         assert_eq!(header.kind, Kind::Len);
 
-        let path = ByteStr::decode_owned(reader, buffer)?;
+        let path = ByteStr::decode(reader, buffer)?;
 
         Ok(Self { header, path })
     }

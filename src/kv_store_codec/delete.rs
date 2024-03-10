@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{BinaryData, Owned, Shared},
     header::{Uuid, Version},
-    DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
 };
 
 use super::DeleteAck;
@@ -62,7 +62,7 @@ where
     {
         assert_eq!(header.kind, Kind::Delete);
 
-        let key = BinaryData::decode_owned(reader, buffer)?;
+        let key = BinaryData::decode(reader, buffer)?;
 
         Ok(Self { header, key })
     }

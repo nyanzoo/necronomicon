@@ -1,30 +1,22 @@
-use crossbeam_channel::{bounded, Receiver, Sender};
+use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 
-use super::{block::Block, OwnedImpl, Pool, Releaser};
+use super::{OwnedImpl, Pool, Releaser};
 
-#[derive(Clone)]
 pub struct PoolImpl {
-    tx: Sender<Block>,
-    rx: Receiver<Block>,
-
+    tx: SyncSender<()>,
+    rx: Receiver<()>,
     block_size: usize,
-    capacity: usize,
 }
 
 impl PoolImpl {
     pub fn new(block_size: usize, capacity: usize) -> Self {
-        let (tx, rx) = bounded(capacity);
+        let (tx, rx) = sync_channel(capacity);
 
         for _ in 0..capacity {
-            tx.send(Block::new(block_size)).unwrap();
+            tx.send(()).unwrap();
         }
 
-        Self {
-            tx,
-            rx,
-            block_size,
-            capacity,
-        }
+        Self { tx, rx, block_size }
     }
 }
 
@@ -32,16 +24,11 @@ impl Pool for PoolImpl {
     type Buffer = OwnedImpl;
 
     fn acquire(&self) -> Result<Self::Buffer, crate::Error> {
-        let block = self.rx.recv().expect("failed to acquire buffer");
+        self.rx.recv().expect("failed to acquire buffer");
 
-        Ok(OwnedImpl::new(block, Releaser::new(self.tx.clone())))
-    }
-
-    fn block_size(&self) -> usize {
-        self.block_size
-    }
-
-    fn capacity(&self) -> usize {
-        self.capacity
+        Ok(OwnedImpl::new(
+            self.block_size,
+            Releaser::new(self.tx.clone()),
+        ))
     }
 }

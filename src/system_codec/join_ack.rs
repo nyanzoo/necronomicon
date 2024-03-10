@@ -9,32 +9,18 @@ pub struct JoinAck {
     pub(crate) response_code: u8,
 }
 
-#[cfg(any(test, feature = "test"))]
-impl JoinAck {
-    pub fn new(response_code: u8, uuid: u128) -> Self {
-        Self {
-            header: Header::new_test_full(Kind::JoinAck, 0, uuid),
-            response_code,
-        }
-    }
-
-    pub fn new_test(response_code: u8) -> Self {
-        Self::new(response_code, 0)
-    }
-}
-
 impl<R, O> PartialDecode<R, O> for JoinAck
 where
     R: Read,
     O: Owned,
 {
-    fn decode(header: Header, reader: &mut R, _: &mut O) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
         assert_eq!(header.kind, Kind::JoinAck);
 
-        let response_code = u8::decode(reader)?;
+        let response_code = u8::decode(reader, buffer)?;
 
         Ok(Self {
             header,
@@ -67,12 +53,21 @@ impl Ack for JoinAck {
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::verify_encode_decode, Packet, SUCCESS};
+    use crate::{tests::verify_encode_decode, Header, Kind, Packet, SUCCESS};
 
     use super::JoinAck;
 
+    impl JoinAck {
+        pub fn new(response_code: u8) -> Self {
+            Self {
+                header: Header::new_test_ack(Kind::JoinAck),
+                response_code,
+            }
+        }
+    }
+
     #[test]
     fn test_encode_decode() {
-        verify_encode_decode(Packet::JoinAck(JoinAck::new_test(SUCCESS)));
+        verify_encode_decode(Packet::JoinAck(JoinAck::new(SUCCESS)));
     }
 }

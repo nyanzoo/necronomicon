@@ -15,14 +15,14 @@ where
     R: Read,
     O: Owned,
 {
-    fn decode(header: Header, reader: &mut R, _: &mut O) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
         assert_eq!(header.kind, Kind::LenAck);
 
-        let response_code = u8::decode(reader)?;
-        let len = u64::decode(reader)?;
+        let response_code = u8::decode(reader, buffer)?;
+        let len = u64::decode(reader, buffer)?;
 
         Ok(Self {
             header,

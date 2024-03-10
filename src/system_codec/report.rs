@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{Owned, Shared},
     header::{Uuid, Version},
-    DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
 };
 
 use super::{Position, ReportAck};
@@ -24,7 +24,7 @@ where
 {
     pub fn new(version: impl Into<Version>, uuid: impl Into<Uuid>, position: Position<S>) -> Self {
         Self {
-            header: Header::new(Kind::Report, version, uuid, position.encode_len()),
+            header: Header::new(Kind::Report, version, uuid, position.len()),
             position,
         }
     }
@@ -63,7 +63,7 @@ where
     {
         assert_eq!(header.kind, Kind::Report);
 
-        let position = Position::decode_owned(reader, buffer)?;
+        let position = Position::decode(reader, buffer)?;
 
         Ok(Self { header, position })
     }
