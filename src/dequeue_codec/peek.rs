@@ -1,20 +1,30 @@
 use std::io::{Read, Write};
 
-use crate::{header::VersionAndUuid, Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+use crate::{
+    buffer::{BinaryData, ByteStr, Owned, Shared},
+    header::{Uuid, Version},
+    Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+};
 
 use super::PeekAck;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub struct Peek {
+pub struct Peek<S>
+where
+    S: Shared,
+{
     pub(crate) header: Header,
-    pub(crate) path: String,
+    pub(crate) path: ByteStr<S>,
 }
 
-impl Peek {
-    pub fn new(version_and_uuid: impl Into<VersionAndUuid>, path: String) -> Self {
+impl<S> Peek<S>
+where
+    S: Shared,
+{
+    pub fn new(version: impl Into<Version>, uuid: impl Into<Uuid>, path: ByteStr<S>) -> Self {
         Self {
-            header: version_and_uuid.into().into_header(Kind::Peek),
+            header: Header::new(Kind::Peek, version, uuid, path.len()),
             path,
         }
     }
@@ -23,46 +33,53 @@ impl Peek {
         self.header
     }
 
-    pub fn path(&self) -> &str {
+    pub fn path(&self) -> &ByteStr<S> {
         &self.path
     }
 
-    pub fn ack(self, value: Vec<u8>) -> PeekAck {
+    pub fn ack(self, value: BinaryData<S>) -> PeekAck<S> {
         PeekAck {
-            header: Header::new(Kind::PeekAck, self.header.version(), self.header.uuid()),
+            header: Header::new(
+                Kind::PeekAck,
+                self.header.version,
+                self.header.uuid,
+                value.len(),
+            ),
             response_code: SUCCESS,
-            value,
+            value: Some(value),
         }
     }
 
-    pub fn nack(self, response_code: u8) -> PeekAck {
+    pub fn nack(self, response_code: u8) -> PeekAck<S> {
         PeekAck {
-            header: Header::new(Kind::PeekAck, self.header.version(), self.header.uuid()),
+            header: Header::new(Kind::PeekAck, self.header.version, self.header.uuid, 0),
             response_code,
-            value: Vec::new(),
+            value: None,
         }
     }
 }
 
-impl<R> PartialDecode<R> for Peek
+impl<R, O> PartialDecode<R, O> for Peek<O::Shared>
 where
     R: Read,
+    O: Owned,
 {
-    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::Peek);
+        assert_eq!(header.kind, Kind::Peek);
 
-        let path = String::decode(reader)?;
+        let path = ByteStr::decode(reader, buffer)?;
 
         Ok(Self { header, path })
     }
 }
 
-impl<W> Encode<W> for Peek
+impl<W, S> Encode<W> for Peek<S>
 where
     W: Write,
+    S: Shared,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
@@ -74,25 +91,19 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::test_encode_decode_packet, Ack, Kind, INTERNAL_ERROR, SUCCESS};
+    use crate::{
+        buffer::{binary_data, byte_str},
+        tests::verify_encode_decode,
+        Ack, Packet, INTERNAL_ERROR, SUCCESS,
+    };
 
     use super::Peek;
 
     #[test]
-    fn test_new() {
-        let peek = Peek::new((1, 2), "test".to_string());
-
-        assert_eq!(peek.header().kind(), Kind::Peek);
-        assert_eq!(peek.header().version(), 1);
-        assert_eq!(peek.header().uuid(), 2);
-        assert_eq!(peek.path(), "test");
-    }
-
-    #[test]
     fn test_acks() {
-        let peek = Peek::new((1, 2), "test".to_string());
+        let peek = Peek::new(1, 2, byte_str(b"test"));
 
-        let ack = peek.clone().ack(vec![1, 2, 3]);
+        let ack = peek.clone().ack(binary_data(&[1, 2, 3]));
         assert_eq!(ack.response_code(), SUCCESS);
 
         let nack = peek.nack(INTERNAL_ERROR);
@@ -101,11 +112,6 @@ mod test {
 
     #[test]
     fn test_encode_decode() {
-        test_encode_decode_packet!(
-            Kind::Peek,
-            Peek {
-                path: "test".to_string(),
-            }
-        );
+        verify_encode_decode(Packet::Peek(Peek::new(1, 1, byte_str(b"test"))));
     }
 }

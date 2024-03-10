@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::{Decode, Encode, Error, Header, Kind, PartialDecode};
+use crate::{buffer::Owned, Decode, Encode, Error, Header, Kind, PartialDecode};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
@@ -9,17 +9,18 @@ pub struct EnqueueAck {
     pub(crate) response_code: u8,
 }
 
-impl<R> PartialDecode<R> for EnqueueAck
+impl<R, O> PartialDecode<R, O> for EnqueueAck
 where
     R: Read,
+    O: Owned,
 {
-    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::EnqueueAck);
+        assert_eq!(header.kind, Kind::EnqueueAck);
 
-        let response_code = u8::decode(reader)?;
+        let response_code = u8::decode(reader, buffer)?;
 
         Ok(Self {
             header,
@@ -52,30 +53,21 @@ impl crate::Ack for EnqueueAck {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        tests::{test_ack_packet, test_encode_decode_packet},
-        Kind, SUCCESS,
-    };
+    use crate::{tests::verify_encode_decode, Header, Kind, Packet, SUCCESS};
 
     use super::EnqueueAck;
 
-    #[test]
-    fn test_encode_decode() {
-        test_encode_decode_packet!(
-            Kind::EnqueueAck,
-            EnqueueAck {
-                response_code: SUCCESS
+    impl EnqueueAck {
+        pub fn new(response_code: u8) -> Self {
+            Self {
+                header: Header::new(Kind::EnqueueAck, 1, 1, 0),
+                response_code,
             }
-        );
+        }
     }
 
     #[test]
-    fn test_ack() {
-        test_ack_packet!(
-            Kind::EnqueueAck,
-            EnqueueAck {
-                response_code: SUCCESS
-            }
-        );
+    fn test_encode_decode() {
+        verify_encode_decode(Packet::EnqueueAck(EnqueueAck::new(SUCCESS)));
     }
 }

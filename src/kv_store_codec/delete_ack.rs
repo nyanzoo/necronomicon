@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::{Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
+use crate::{buffer::Owned, Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
@@ -9,17 +9,18 @@ pub struct DeleteAck {
     pub(crate) response_code: u8,
 }
 
-impl<R> PartialDecode<R> for DeleteAck
+impl<R, O> PartialDecode<R, O> for DeleteAck
 where
     R: Read,
+    O: Owned,
 {
-    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::DeleteAck);
+        assert_eq!(header.kind, Kind::DeleteAck);
 
-        let response_code = u8::decode(reader)?;
+        let response_code = u8::decode(reader, buffer)?;
 
         Ok(Self {
             header,
@@ -52,30 +53,21 @@ impl Ack for DeleteAck {
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        tests::{test_ack_packet, test_encode_decode_packet},
-        Kind, SUCCESS,
-    };
+    use crate::{tests::verify_encode_decode, Header, Kind, Packet, SUCCESS};
 
     use super::DeleteAck;
 
-    #[test]
-    fn test_encode_decode() {
-        test_encode_decode_packet!(
-            Kind::DeleteAck,
-            DeleteAck {
-                response_code: SUCCESS
+    impl DeleteAck {
+        pub fn new(response_code: u8) -> Self {
+            Self {
+                header: Header::new(Kind::DeleteAck, 1, 1, 0),
+                response_code,
             }
-        );
+        }
     }
 
     #[test]
-    fn test_ack() {
-        test_ack_packet!(
-            Kind::DeleteAck,
-            DeleteAck {
-                response_code: SUCCESS
-            }
-        );
+    fn test_encode_decode() {
+        verify_encode_decode(Packet::DeleteAck(DeleteAck::new(SUCCESS)));
     }
 }

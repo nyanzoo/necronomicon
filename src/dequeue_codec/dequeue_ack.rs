@@ -1,27 +1,34 @@
 use std::io::{Read, Write};
 
-use crate::{Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
+use crate::{
+    buffer::{BinaryData, Owned, Shared},
+    Ack, Decode, Encode, Error, Header, Kind, PartialDecode,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub struct DequeueAck {
+pub struct DequeueAck<S>
+where
+    S: Shared,
+{
     pub(crate) header: Header,
     pub(crate) response_code: u8,
-    pub(crate) value: Vec<u8>,
+    pub(crate) value: Option<BinaryData<S>>,
 }
 
-impl<R> PartialDecode<R> for DequeueAck
+impl<R, O> PartialDecode<R, O> for DequeueAck<O::Shared>
 where
     R: Read,
+    O: Owned,
 {
-    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::DequeueAck);
+        assert_eq!(header.kind, Kind::DequeueAck);
 
-        let response_code = u8::decode(reader)?;
-        let value = Vec::<u8>::decode(reader)?;
+        let response_code = u8::decode(reader, buffer)?;
+        let value = Option::decode(reader, buffer)?;
 
         Ok(Self {
             header,
@@ -31,9 +38,10 @@ where
     }
 }
 
-impl<W> Encode<W> for DequeueAck
+impl<W, S> Encode<W> for DequeueAck<S>
 where
     W: Write,
+    S: Shared,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
@@ -44,7 +52,10 @@ where
     }
 }
 
-impl Ack for DequeueAck {
+impl<S> Ack for DequeueAck<S>
+where
+    S: Shared,
+{
     fn header(&self) -> &Header {
         &self.header
     }
@@ -57,31 +68,25 @@ impl Ack for DequeueAck {
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests::{test_ack_packet, test_encode_decode_packet},
-        Kind, SUCCESS,
+        buffer::{BinaryData, SharedImpl},
+        tests::verify_encode_decode,
+        Header, Kind, Packet, SUCCESS,
     };
 
     use super::DequeueAck;
 
-    #[test]
-    fn test_encode_decode() {
-        test_encode_decode_packet!(
-            Kind::DequeueAck,
-            DequeueAck {
-                response_code: SUCCESS,
-                value: vec![1, 2, 3],
+    impl DequeueAck<SharedImpl> {
+        pub fn new(response_code: u8, value: Option<BinaryData<SharedImpl>>) -> Self {
+            Self {
+                header: Header::new_test_ack(Kind::DequeueAck),
+                response_code,
+                value,
             }
-        );
+        }
     }
 
     #[test]
-    fn test_ack() {
-        test_ack_packet!(
-            Kind::DequeueAck,
-            DequeueAck {
-                response_code: SUCCESS,
-                value: vec![1, 2, 3],
-            }
-        );
+    fn test_encode_decode() {
+        verify_encode_decode(Packet::DequeueAck(DequeueAck::new(SUCCESS, None)));
     }
 }

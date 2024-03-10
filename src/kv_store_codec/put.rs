@@ -1,21 +1,36 @@
 use std::io::{Read, Write};
 
-use crate::{header::VersionAndUuid, Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+use crate::{
+    buffer::{BinaryData, Owned, Shared},
+    header::{Uuid, Version},
+    Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+};
 
-use super::{Key, PutAck};
+use super::PutAck;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub struct Put {
+pub struct Put<S>
+where
+    S: Shared,
+{
     pub(crate) header: Header,
-    pub(crate) key: Key,
-    pub(crate) value: Vec<u8>,
+    pub(crate) key: BinaryData<S>,
+    pub(crate) value: BinaryData<S>,
 }
 
-impl Put {
-    pub fn new(version_and_uuid: impl Into<VersionAndUuid>, key: Key, value: Vec<u8>) -> Self {
+impl<S> Put<S>
+where
+    S: Shared,
+{
+    pub fn new(
+        version: impl Into<Version>,
+        uuid: impl Into<Uuid>,
+        key: BinaryData<S>,
+        value: BinaryData<S>,
+    ) -> Self {
         Self {
-            header: version_and_uuid.into().into_header(Kind::Put),
+            header: Header::new(Kind::Put, version, uuid, key.len() + value.len()),
             key,
             value,
         }
@@ -25,49 +40,51 @@ impl Put {
         self.header
     }
 
-    pub fn key(&self) -> &Key {
+    pub fn key(&self) -> &BinaryData<S> {
         &self.key
     }
 
-    pub fn value(&self) -> &[u8] {
+    pub fn value(&self) -> &BinaryData<S> {
         &self.value
     }
 
     pub fn ack(self) -> PutAck {
         PutAck {
-            header: Header::new(Kind::PutAck, self.header.version(), self.header.uuid()),
+            header: Header::new(Kind::PutAck, self.header.version, self.header.uuid, 0),
             response_code: SUCCESS,
         }
     }
 
     pub fn nack(self, response_code: u8) -> PutAck {
         PutAck {
-            header: Header::new(Kind::PutAck, self.header.version(), self.header.uuid()),
+            header: Header::new(Kind::PutAck, self.header.version, self.header.uuid, 0),
             response_code,
         }
     }
 }
 
-impl<R> PartialDecode<R> for Put
+impl<R, O> PartialDecode<R, O> for Put<O::Shared>
 where
     R: Read,
+    O: Owned,
 {
-    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::Put);
+        assert_eq!(header.kind, Kind::Put);
 
-        let key = Key::decode(reader)?;
-        let value = Vec::decode(reader)?;
+        let key = BinaryData::decode(reader, buffer)?;
+        let value = BinaryData::decode(reader, buffer)?;
 
         Ok(Self { header, key, value })
     }
 }
 
-impl<W> Encode<W> for Put
+impl<W, S> Encode<W> for Put<S>
 where
     W: Write,
+    S: Shared,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
@@ -80,22 +97,15 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{kv_store_codec::TEST_KEY, tests::test_encode_decode_packet, Ack, Kind};
+    use crate::{
+        buffer::binary_data, kv_store_codec::test_key, tests::verify_encode_decode, Ack, Packet,
+    };
 
     use super::Put;
 
     #[test]
-    fn test_new() {
-        let put = Put::new((0, 0), TEST_KEY, vec![1, 2, 3]);
-
-        assert_eq!(put.header().kind(), Kind::Put);
-        assert_eq!(put.key(), &TEST_KEY);
-        assert_eq!(put.value(), &[1, 2, 3]);
-    }
-
-    #[test]
     fn test_ack() {
-        let put = Put::new((0, 0), TEST_KEY, vec![1, 2, 3]);
+        let put = Put::new(0, 0, test_key(), binary_data(&[1, 2, 3]));
 
         let ack = put.clone().ack();
         assert_eq!(ack.response_code(), crate::SUCCESS);
@@ -106,12 +116,11 @@ mod test {
 
     #[test]
     fn test_encode_decode() {
-        test_encode_decode_packet!(
-            Kind::Put,
-            Put {
-                key: TEST_KEY,
-                value: vec![1, 2, 3],
-            }
-        );
+        verify_encode_decode(Packet::Put(Put::new(
+            1,
+            1,
+            test_key(),
+            binary_data(&[1, 2, 3]),
+        )));
     }
 }
