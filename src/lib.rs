@@ -2,10 +2,14 @@
 
 use std::io::{Read, Write};
 
-use buffer::{Owned, Shared};
 use log::debug;
 
-pub mod buffer;
+mod buffer;
+#[cfg(any(test, feature = "test"))]
+pub use buffer::{binary_data, byte_str};
+pub use buffer::{
+    fill, BinaryData, Block, BlockMut, Owned, OwnedImpl, Pool, PoolImpl, Shared, SharedImpl,
+};
 
 mod codes;
 pub use codes::{
@@ -219,7 +223,7 @@ where
 
     if header.len > buffer.unfilled_capacity() {
         return Err(Error::OwnedRemaining {
-            acquire: header.len as usize,
+            acquire: header.len,
             capacity: buffer.unfilled_capacity(),
         });
     }

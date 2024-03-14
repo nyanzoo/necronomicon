@@ -106,12 +106,12 @@ impl Drop for Releaser {
     }
 }
 
-#[cfg(test)]
-pub(crate) fn binary_data(data: &[u8]) -> BinaryData<SharedImpl> {
+#[cfg(any(test, feature = "test"))]
+pub fn binary_data(data: &[u8]) -> BinaryData<SharedImpl> {
     BinaryData::new(data.len(), SharedImpl::test_new(data))
 }
 
-#[cfg(test)]
-pub(crate) fn byte_str(data: &[u8]) -> ByteStr<SharedImpl> {
+#[cfg(any(test, feature = "test"))]
+pub fn byte_str(data: &[u8]) -> ByteStr<SharedImpl> {
     ByteStr::new(binary_data(data))
 }

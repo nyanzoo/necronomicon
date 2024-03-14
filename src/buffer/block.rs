@@ -15,6 +15,10 @@ impl Block {
     pub fn len(&self) -> usize {
         self.data.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
 }
 
 #[cfg(test)]
@@ -74,8 +78,6 @@ impl BlockMut {
     pub fn split_at(&mut self, index: usize) -> Self {
         let right = self.data.split_off(index);
         let left = std::mem::replace(&mut self.data, right);
-        Self {
-            data: left,
-        }
+        Self { data: left }
     }
 }
