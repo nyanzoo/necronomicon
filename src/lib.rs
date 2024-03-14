@@ -24,7 +24,7 @@ mod error;
 pub use error::Error;
 
 mod header;
-pub use header::Header;
+pub use header::{Header, Uuid, Version};
 
 mod kind;
 pub use kind::Kind;
