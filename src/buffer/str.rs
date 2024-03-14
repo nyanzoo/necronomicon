@@ -21,6 +21,10 @@ where
         self.0.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     pub fn inner(&self) -> &BinaryData<S> {
         &self.0
     }
