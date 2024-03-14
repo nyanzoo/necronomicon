@@ -13,3 +13,7 @@ thiserror = "1"
 coverage-helper = "0"
 matches = "0.1"
 test-case = "3"
+
+[features]
+default = []
+test = []
