@@ -32,7 +32,7 @@ where
         successor_lost: bool,
     ) -> Self {
         Self {
-            header: Header::new(Kind::Join, version, uuid, role.len()),
+            header: Header::new(Kind::Join, version, uuid, role.encode_len()),
             role,
             instance,
             successor_lost,

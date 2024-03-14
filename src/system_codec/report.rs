@@ -24,7 +24,7 @@ where
 {
     pub fn new(version: impl Into<Version>, uuid: impl Into<Uuid>, position: Position<S>) -> Self {
         Self {
-            header: Header::new(Kind::Report, version, uuid, position.len()),
+            header: Header::new(Kind::Report, version, uuid, position.encode_len()),
             position,
         }
     }

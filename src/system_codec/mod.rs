@@ -72,7 +72,7 @@ impl<S> Role<S>
 where
     S: Shared,
 {
-    pub fn len(&self) -> usize {
+    pub fn encode_len(&self) -> usize {
         match self {
             Role::Backend(addr) | Role::Frontend(addr) => addr.len(),
             Role::Observer => 0,
@@ -156,7 +156,7 @@ impl<S> Position<S>
 where
     S: Shared,
 {
-    pub fn len(&self) -> usize {
+    pub fn encode_len(&self) -> usize {
         match self {
             Position::Head { next } | Position::Middle { next } => next.len(),
             Position::Tail { candidate } => candidate.as_ref().map(|c| c.len()).unwrap_or(0),
@@ -166,7 +166,7 @@ where
                     + tail.as_ref().map(|t| t.len()).unwrap_or(0)
             }
             Position::Observer { chain } => {
-                chain.iter().map(|role| role.len()).sum::<usize>() + size_of::<u64>()
+                chain.iter().map(|role| role.encode_len()).sum::<usize>() + size_of::<u64>()
             }
         }
     }

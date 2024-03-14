@@ -2,7 +2,6 @@
 
 use std::io::{Read, Write};
 
-use buffer::{Owned, Shared};
 use log::debug;
 
 mod buffer;
@@ -251,7 +250,7 @@ where
 
     if header.len > buffer.unfilled_capacity() {
         return Err(Error::OwnedRemaining {
-            acquire: header.len as usize,
+            acquire: header.len,
             capacity: buffer.unfilled_capacity(),
         });
     }
