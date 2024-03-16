@@ -19,7 +19,7 @@ where
     R: Read,
     O: Owned,
 {
-    fn decode(header: Header, reader: &mut R, buffer: &mut O) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, _: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {

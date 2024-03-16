@@ -70,7 +70,7 @@ where
     {
         assert_eq!(header.kind, Kind::Get);
 
-        let key = BinaryData::decode(reader, buffer)?;
+        let key = BinaryData::decode_owned(reader, buffer)?;
 
         Ok(Self { header, key })
     }

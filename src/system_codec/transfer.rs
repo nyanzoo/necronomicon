@@ -75,8 +75,8 @@ where
     {
         assert_eq!(header.kind, Kind::Transfer);
 
-        let path = ByteStr::decode(reader, buffer)?;
-        let content = BinaryData::decode(reader, buffer)?;
+        let path = ByteStr::decode_owned(reader, buffer)?;
+        let content = BinaryData::decode_owned(reader, buffer)?;
 
         Ok(Self {
             header,

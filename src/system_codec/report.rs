@@ -63,7 +63,7 @@ where
     {
         assert_eq!(header.kind, Kind::Report);
 
-        let position = Position::decode(reader, buffer)?;
+        let position = Position::decode_owned(reader, buffer)?;
 
         Ok(Self { header, position })
     }

@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::{Decode, Encode, Error};
+use crate::{Decode, DecodeOwned, Encode, Error};
 
 use super::{Owned, Shared};
 
@@ -34,16 +34,16 @@ where
     }
 }
 
-impl<R, O> Decode<R, O> for BinaryData<O::Shared>
+impl<R, O> DecodeOwned<R, O> for BinaryData<O::Shared>
 where
     R: Read,
     O: Owned,
 {
-    fn decode(reader: &mut R, buffer: &mut O) -> Result<Self, Error>
+    fn decode_owned(reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        let len = usize::decode(reader, buffer)?;
+        let len = usize::decode(reader)?;
         if buffer.unfilled_capacity() < len {
             return Err(Error::OwnedRemaining {
                 acquire: len,
