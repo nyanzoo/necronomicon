@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{BinaryData, ByteStr, Owned, Shared},
     header::{Uuid, Version},
-    Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
 };
 
 use super::DequeueAck;
@@ -73,7 +73,7 @@ where
     {
         assert_eq!(header.kind, Kind::Dequeue);
 
-        let path = ByteStr::decode(reader, buffer)?;
+        let path = ByteStr::decode_owned(reader, buffer)?;
 
         Ok(Self { header, path })
     }

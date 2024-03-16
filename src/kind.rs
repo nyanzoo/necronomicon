@@ -3,7 +3,7 @@ use std::{
     io::{Read, Write},
 };
 
-use crate::{buffer::Owned, dequeue_codec, kv_store_codec, system_codec, Decode, Encode, Error};
+use crate::{dequeue_codec, kv_store_codec, system_codec, Decode, Encode, Error};
 
 // TODO: need to map these to packet types, also need to do partial
 // decodes of header to get packet type and then decode the rest.
@@ -88,13 +88,12 @@ impl Debug for Kind {
     }
 }
 
-impl<R, O> Decode<R, O> for Kind
+impl<R> Decode<R> for Kind
 where
     R: Read,
-    O: Owned,
 {
-    fn decode(reader: &mut R, buffer: &mut O) -> Result<Self, Error> {
-        u8::decode(reader, buffer).map(Self::from)
+    fn decode(reader: &mut R) -> Result<Self, Error> {
+        u8::decode(reader).map(Self::from)
     }
 }
 

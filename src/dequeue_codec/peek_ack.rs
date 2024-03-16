@@ -2,7 +2,7 @@ use std::io::{Read, Write};
 
 use crate::{
     buffer::{BinaryData, Owned, Shared},
-    Ack, Decode, Encode, Error, Header, Kind, PartialDecode,
+    Ack, Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -27,8 +27,8 @@ where
     {
         assert_eq!(header.kind, Kind::PeekAck);
 
-        let response_code = u8::decode(reader, buffer)?;
-        let value = Option::decode(reader, buffer)?;
+        let response_code = u8::decode(reader)?;
+        let value = Option::decode_owned(reader, buffer)?;
 
         Ok(Self {
             header,

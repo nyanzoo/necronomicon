@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{ByteStr, Owned, Shared},
     header::{Uuid, Version},
-    Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
 };
 
 use super::DeleteAck;
@@ -73,7 +73,7 @@ where
     {
         assert_eq!(header.kind, Kind::DeleteQueue);
 
-        let path = ByteStr::decode(reader, buffer)?;
+        let path = ByteStr::decode_owned(reader, buffer)?;
 
         Ok(Self { header, path })
     }
@@ -82,7 +82,7 @@ where
 impl<W, S> Encode<W> for Delete<S>
 where
     W: Write,
-    S: Shared
+    S: Shared,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;

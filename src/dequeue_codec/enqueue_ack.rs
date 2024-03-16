@@ -14,13 +14,13 @@ where
     R: Read,
     O: Owned,
 {
-    fn decode(header: Header, reader: &mut R, buffer: &mut O) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, _: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
         assert_eq!(header.kind, Kind::EnqueueAck);
 
-        let response_code = u8::decode(reader, buffer)?;
+        let response_code = u8::decode(reader)?;
 
         Ok(Self {
             header,

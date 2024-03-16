@@ -3,7 +3,7 @@ use std::{
     io::{Read, Write},
 };
 
-use crate::{buffer::Owned, error::Error, Decode, Encode, Kind};
+use crate::{error::Error, Decode, Encode, Kind};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct Version(u8);
@@ -14,13 +14,12 @@ impl From<u8> for Version {
     }
 }
 
-impl<R, O> Decode<R, O> for Version
+impl<R> Decode<R> for Version
 where
     R: Read,
-    O: Owned,
 {
-    fn decode(reader: &mut R, buffer: &mut O) -> Result<Self, Error> {
-        u8::decode(reader, buffer).map(Version::from)
+    fn decode(reader: &mut R) -> Result<Self, Error> {
+        u8::decode(reader).map(Version::from)
     }
 }
 
@@ -42,13 +41,12 @@ impl From<u128> for Uuid {
     }
 }
 
-impl<R, O> Decode<R, O> for Uuid
+impl<R> Decode<R> for Uuid
 where
     R: Read,
-    O: Owned,
 {
-    fn decode(reader: &mut R, buffer: &mut O) -> Result<Self, Error> {
-        u128::decode(reader, buffer).map(Uuid::from)
+    fn decode(reader: &mut R) -> Result<Self, Error> {
+        u128::decode(reader).map(Uuid::from)
     }
 }
 
@@ -100,16 +98,15 @@ impl Header {
     }
 }
 
-impl<R, O> Decode<R, O> for Header
+impl<R> Decode<R> for Header
 where
     R: Read,
-    O: Owned,
 {
-    fn decode(reader: &mut R, buffer: &mut O) -> Result<Self, Error> {
-        let kind = Kind::decode(reader, buffer)?;
-        let version = Version::decode(reader, buffer)?;
-        let len = usize::decode(reader, buffer)?;
-        let uuid = Uuid::decode(reader, buffer)?;
+    fn decode(reader: &mut R) -> Result<Self, Error> {
+        let kind = Kind::decode(reader)?;
+        let version = Version::decode(reader)?;
+        let len = usize::decode(reader)?;
+        let uuid = Uuid::decode(reader)?;
 
         Ok(Header {
             kind,
@@ -140,10 +137,7 @@ mod test {
 
     use test_case::test_case;
 
-    use crate::{
-        buffer::{Pool, PoolImpl},
-        Decode, Encode, Kind,
-    };
+    use crate::{Decode, Encode, Kind};
 
     use super::Header;
 
@@ -156,11 +150,8 @@ mod test {
         let header = Header::new(kind, version, uuid, 0);
         header.encode(&mut buf).expect("encode");
 
-        let pool = PoolImpl::new(1024, 1);
-        let mut buffer = pool.acquire().expect("acquire");
-
         let mut reader = Cursor::new(buf);
-        let actual = Header::decode(&mut reader, &mut buffer).expect("decode");
+        let actual = Header::decode(&mut reader).expect("decode");
         assert_eq!(Kind::from(kind), header.kind);
         assert_eq!(header.version, version.into());
         assert_eq!(header.uuid, uuid.into());

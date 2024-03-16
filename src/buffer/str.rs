@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::{Decode, Encode, Error};
+use crate::{DecodeOwned, Encode, Error};
 
 use super::{BinaryData, Owned, Shared};
 
@@ -45,16 +45,16 @@ where
     }
 }
 
-impl<R, O> Decode<R, O> for ByteStr<O::Shared>
+impl<R, O> DecodeOwned<R, O> for ByteStr<O::Shared>
 where
     R: Read,
     O: Owned,
 {
-    fn decode(reader: &mut R, buffer: &mut O) -> Result<Self, Error>
+    fn decode_owned(reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        let data = BinaryData::decode(reader, buffer)?;
+        let data = BinaryData::decode_owned(reader, buffer)?;
 
         Ok(Self(data))
     }

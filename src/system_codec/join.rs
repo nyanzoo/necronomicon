@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{ByteStr, Owned, Shared},
     header::{Uuid, Version},
-    Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
 };
 
 use super::{JoinAck, Role};
@@ -89,9 +89,9 @@ where
     {
         assert_eq!(header.kind, Kind::Join);
 
-        let role = Role::decode(reader, buffer)?;
-        let version = u128::decode(reader, buffer)?;
-        let successor_lost = u8::decode(reader, buffer)? > 0;
+        let role = Role::decode_owned(reader, buffer)?;
+        let version = u128::decode(reader)?;
+        let successor_lost = u8::decode(reader)? > 0;
 
         Ok(Self {
             header,

@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{BinaryData, Owned, Shared},
     header::{Uuid, Version},
-    Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
 };
 
 use super::PutAck;
@@ -74,8 +74,8 @@ where
     {
         assert_eq!(header.kind, Kind::Put);
 
-        let key = BinaryData::decode(reader, buffer)?;
-        let value = BinaryData::decode(reader, buffer)?;
+        let key = BinaryData::decode_owned(reader, buffer)?;
+        let value = BinaryData::decode_owned(reader, buffer)?;
 
         Ok(Self { header, key, value })
     }
