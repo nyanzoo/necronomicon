@@ -49,6 +49,21 @@ impl Hash for SharedImpl {
     }
 }
 
+impl PartialOrd for SharedImpl {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        self.inner
+            .as_ref()
+            .as_slice()
+            .partial_cmp(other.inner.as_ref().as_slice())
+    }
+}
+
+impl Ord for SharedImpl {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.inner.as_ref().as_slice().cmp(other.inner.as_ref().as_slice())
+    }
+}
+
 impl SharedImpl {
     pub(crate) fn new(inner: Block, releaser: Releaser) -> Self {
         Self {
