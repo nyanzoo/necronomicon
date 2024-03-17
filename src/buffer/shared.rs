@@ -1,6 +1,5 @@
 use std::{
-    fmt::{self, Debug, Formatter},
-    sync::Arc,
+    cmp, fmt::{self, Debug, Formatter}, sync::Arc
 };
 
 use super::{Block, BlockMut, Releaser};
@@ -19,9 +18,26 @@ impl Debug for SharedImpl {
     }
 }
 
+impl Eq for SharedImpl {}
+
 impl PartialEq for SharedImpl {
     fn eq(&self, other: &Self) -> bool {
         self.inner.as_ref().as_slice() == other.inner.as_ref().as_slice()
+    }
+}
+
+impl PartialOrd for SharedImpl {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        self.inner
+            .as_ref()
+            .as_slice()
+            .partial_cmp(other.inner.as_ref().as_slice())
+    }
+}
+
+impl Ord for SharedImpl {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.inner.as_ref().as_slice().cmp(other.inner.as_ref().as_slice())
     }
 }
 

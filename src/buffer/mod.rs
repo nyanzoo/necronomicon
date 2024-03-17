@@ -24,7 +24,9 @@ mod str;
 pub use str::ByteStr;
 
 /// A thread-safe read-only buffer.
-pub trait Shared: Send + Sync + AsRef<[u8]> + Clone + Debug {
+pub trait Shared:
+    Send + Sync + AsRef<[u8]> + Clone + Debug + Eq + PartialEq + PartialOrd + Ord
+{
     /// Returns the length of the buffer.
     fn len(&self) -> usize {
         self.as_ref().len()
