@@ -250,8 +250,9 @@ where
     let header = previous_decoded_header.unwrap_or(Header::decode(reader)?);
 
     if header.len > buffer.unfilled_capacity() {
-        return Err(Error::OwnedRemaining {
-            acquire: header.len,
+        return Err(Error::BufferTooSmallForPacketDecode {
+            header,
+            size: header.len,
             capacity: buffer.unfilled_capacity(),
         });
     }
