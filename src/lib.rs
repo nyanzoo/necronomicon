@@ -210,16 +210,34 @@ where
     Ok(packet)
 }
 
+/// # Description
 /// Attempts to fully decode a `Packet` from the given reader.
 /// We use a buffer to avoid unnecessary allocations, but if the buffer is not large enough, we will
 /// error.
-pub fn full_decode<R, O>(reader: &mut R, buffer: &mut O) -> Result<Packet<O::Shared>, Error>
+///
+/// # Arguments
+/// * `reader` - The reader to decode from.
+/// * `buffer` - The buffer to place the decoded value into.
+/// * `previous_decoded_header` - The previous header that was decoded. This is useful for when
+///  we failed to have enough buffer to decode the full packet. We can use this to try again with a new buffer.
+///
+/// # Errors
+/// This function will return an error if the data cannot be decoded from the reader. Or if the buffer is not large enough.
+/// See [`error::Error`] for more details.
+///
+/// # Returns
+/// The decoded packet.
+pub fn full_decode<R, O>(
+    reader: &mut R,
+    buffer: &mut O,
+    previous_decoded_header: Option<Header>,
+) -> Result<Packet<O::Shared>, Error>
 where
     R: Read,
     O: Owned,
 {
     // decoding the header does not use up buffer space.
-    let header = Header::decode(reader)?;
+    let header = previous_decoded_header.unwrap_or(Header::decode(reader)?);
 
     if header.len > buffer.unfilled_capacity() {
         return Err(Error::OwnedRemaining {
@@ -577,7 +595,7 @@ pub(crate) mod tests {
         let pool = PoolImpl::new(1024, 1);
         let mut buffer = pool.acquire().expect("acquire");
 
-        let decoded = full_decode(&mut cursor, &mut buffer).unwrap();
+        let decoded = full_decode(&mut cursor, &mut buffer, None).unwrap();
         assert_eq!(val, decoded);
     }
 
@@ -593,7 +611,7 @@ pub(crate) mod tests {
             let pool = PoolImpl::new(1024, 1);
             let mut buffer = pool.acquire().expect("acquire");
 
-            let decoded = full_decode(&mut cursor, &mut buffer).unwrap();
+            let decoded = full_decode(&mut cursor, &mut buffer, None).unwrap();
             assert_eq!(packet, decoded);
         }
     }
