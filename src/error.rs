@@ -1,9 +1,15 @@
 use thiserror::Error;
 
+use crate::Header;
+
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("owned acquire {acquire} > capacity {capacity}")]
-    OwnedRemaining { acquire: usize, capacity: usize },
+    #[error("packet size {size} > capacity {capacity}")]
+    BufferTooSmallForPacketDecode {
+        header: Header,
+        size: usize,
+        capacity: usize,
+    },
 
     #[error("expected buffer size {expected} < read bytes {read}")]
     BinaryDataSizeMismatch { expected: usize, read: usize },
@@ -22,6 +28,9 @@ pub enum Error {
 
     #[error("io err: {0}")]
     Io(#[from] std::io::Error),
+
+    #[error("owned acquire {acquire} > capacity {capacity}")]
+    OwnedRemaining { acquire: usize, capacity: usize },
 
     #[error("bad position: {0}")]
     SystemBadPosition(u8),
