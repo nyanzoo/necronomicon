@@ -222,8 +222,8 @@ where
 ///  we failed to have enough buffer to decode the full packet. We can use this to try again with a new buffer.
 ///
 /// # Errors
-/// This function will return an error if the data cannot be decoded from the reader. Or if the buffer is not large enough.
-/// See [`error::Error`] for more details.
+/// This function will return an error if the data cannot be decoded from the reader along with a previous header if any.
+/// Or if the buffer is not large enough. See [`error::Error`] for more details.
 ///
 /// # Returns
 /// The decoded packet.
@@ -240,8 +240,9 @@ where
     let header = previous_decoded_header.unwrap_or(Header::decode(reader)?);
 
     if header.len > buffer.unfilled_capacity() {
-        return Err(Error::OwnedRemaining {
-            acquire: header.len,
+        return Err(Error::BufferTooSmallForPacketDecode {
+            header,
+            size: header.len,
             capacity: buffer.unfilled_capacity(),
         });
     }
