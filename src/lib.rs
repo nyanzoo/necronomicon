@@ -220,6 +220,7 @@ where
     Ok(packet)
 }
 
+/// # Description
 /// Attempts to fully decode a `Packet` from the given reader.
 /// We use a buffer to avoid unnecessary allocations, but if the buffer is not large enough, we will
 /// error.
@@ -246,7 +247,7 @@ where
     O: Owned,
 {
     // decoding the header does not use up buffer space.
-    let header = Header::decode(reader)?;
+    let header = previous_decoded_header.unwrap_or(Header::decode(reader)?);
 
     if header.len > buffer.unfilled_capacity() {
         return Err(Error::OwnedRemaining {
@@ -624,7 +625,7 @@ pub(crate) mod tests {
         let pool = PoolImpl::new(1024, 1);
         let mut buffer = pool.acquire("full decode");
 
-        let decoded = full_decode(&mut cursor, &mut buffer).unwrap();
+        let decoded = full_decode(&mut cursor, &mut buffer, None).unwrap();
         assert_eq!(val, decoded);
     }
 
