@@ -1,5 +1,7 @@
 use std::{
-    cmp, fmt::{self, Debug, Formatter}, sync::Arc
+    cmp,
+    fmt::{self, Debug, Formatter},
+    sync::Arc,
 };
 
 use super::{Block, BlockMut, Releaser};
@@ -28,16 +30,16 @@ impl PartialEq for SharedImpl {
 
 impl PartialOrd for SharedImpl {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-        self.inner
-            .as_ref()
-            .as_slice()
-            .partial_cmp(other.inner.as_ref().as_slice())
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for SharedImpl {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.inner.as_ref().as_slice().cmp(other.inner.as_ref().as_slice())
+        self.inner
+            .as_ref()
+            .as_slice()
+            .cmp(other.inner.as_ref().as_slice())
     }
 }
 
