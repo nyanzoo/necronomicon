@@ -42,7 +42,7 @@ pub fn is_kv_store_message(kind: u8) -> bool {
 
 #[cfg(test)]
 pub(crate) fn test_key() -> crate::buffer::BinaryData<crate::buffer::SharedImpl> {
-    crate::buffer::BinaryData::new(7, crate::buffer::SharedImpl::test_new(b"kittens"))
+    crate::buffer::BinaryData::new(crate::buffer::SharedImpl::test_new(b"kittens"))
 }
 
 #[cfg(test)]
