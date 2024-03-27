@@ -110,7 +110,7 @@ impl Drop for Releaser {
 
 #[cfg(any(test, feature = "test"))]
 pub fn binary_data(data: &[u8]) -> BinaryData<SharedImpl> {
-    BinaryData::new(data.len(), SharedImpl::test_new(data))
+    BinaryData::new(SharedImpl::test_new(data))
 }
 
 #[cfg(any(test, feature = "test"))]

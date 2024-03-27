@@ -9,7 +9,6 @@ pub struct BinaryData<S>
 where
     S: Shared,
 {
-    len: usize,
     data: S,
 }
 
@@ -17,16 +16,16 @@ impl<S> BinaryData<S>
 where
     S: Shared,
 {
-    pub fn new(len: usize, data: S) -> Self {
-        Self { len, data }
+    pub fn new(data: S) -> Self {
+        Self { data }
     }
 
     pub fn len(&self) -> usize {
-        self.len
+        self.data.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.len == 0
+        self.len() == 0
     }
 
     pub fn data(&self) -> &S {
@@ -64,7 +63,7 @@ where
         let data = buffer.split_at(len);
         let data = data.into_shared();
 
-        Ok(Self { len, data })
+        Ok(Self { data })
     }
 }
 
@@ -74,7 +73,7 @@ where
     S: Shared,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
-        self.len.encode(writer)?;
+        self.len().encode(writer)?;
         writer.write_all(self.data.as_ref()).map_err(Error::Io)?;
 
         Ok(())
