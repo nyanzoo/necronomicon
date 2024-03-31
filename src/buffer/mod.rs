@@ -1,7 +1,6 @@
 use std::{fmt::Debug, hash::Hash, sync::Arc};
 
 mod block;
-pub use block::{Block, BlockMut};
 
 mod data;
 pub use data::BinaryData;
@@ -17,6 +16,8 @@ pub use shared::SharedImpl;
 
 mod str;
 pub use str::ByteStr;
+
+use self::block::Block;
 
 /// A thread-safe read-only buffer.
 pub trait Shared:
@@ -96,18 +97,18 @@ pub trait Pool {
 /// A mechanism for releasing memory back to the pool.
 /// When this is dropped, it releases the memory back to the pool.
 #[derive(Clone)]
-pub(crate) struct Releaser(Arc<SyncSender<()>>);
+pub(crate) struct Releaser(Arc<SyncSender<Block>>);
 
 impl Releaser {
-    pub fn new(sender: SyncSender<()>) -> Self {
+    pub fn new(sender: SyncSender<Block>) -> Self {
         Self(Arc::new(sender))
     }
-}
 
-impl Drop for Releaser {
-    fn drop(&mut self) {
+    fn release(&mut self, buffer: &mut Block) {
         if Arc::strong_count(&self.0) == 1 {
-            self.0.send(()).expect("failed to release buffer");
+            self.0
+                .send(buffer.release())
+                .expect("failed to release buffer");
         }
     }
 }

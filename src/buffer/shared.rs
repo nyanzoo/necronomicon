@@ -3,12 +3,20 @@ use std::{
     hash::Hash,
 };
 
-use super::{Block, BlockMut, Releaser};
+use super::{Block, Releaser};
 
 #[derive(Clone)]
 pub struct SharedImpl {
-    inner: Arc<Block>,
+    inner: Block,
     _releaser: Option<Releaser>,
+}
+
+impl Drop for SharedImpl {
+    fn drop(&mut self) {
+        if let Some(mut releaser) = self._releaser.take() {
+            releaser.release(&mut self.inner);
+        }
+    }
 }
 
 impl Debug for SharedImpl {
@@ -57,26 +65,23 @@ impl PartialOrd for SharedImpl {
 
 impl Ord for SharedImpl {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.inner
-            .as_ref()
-            .as_slice()
-            .cmp(other.inner.as_ref().as_slice())
+        self.inner.cmp(&other.inner)
     }
 }
 
 impl SharedImpl {
     pub(crate) fn new(inner: Block, releaser: Releaser) -> Self {
         Self {
-            inner: Arc::new(inner),
+            inner,
             _releaser: Some(releaser),
         }
     }
 
     pub fn test_new(data: &[u8]) -> Self {
-        let mut block = BlockMut::new(data.len());
+        let mut block = Block::new(data.len());
         block.as_mut_slice().copy_from_slice(data);
         Self {
-            inner: Arc::new(block.into_block()),
+            inner: block,
             _releaser: None,
         }
     }
@@ -84,7 +89,7 @@ impl SharedImpl {
 
 impl AsRef<[u8]> for SharedImpl {
     fn as_ref(&self) -> &[u8] {
-        self.inner.as_ref().as_slice()
+        self.inner.as_slice()
     }
 }
 

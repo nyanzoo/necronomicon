@@ -4,9 +4,8 @@ use log::trace;
 use super::{block::Block, BufferOwner, OwnedImpl, Pool, Releaser};
 
 pub struct PoolImpl {
-    tx: SyncSender<()>,
-    rx: Receiver<()>,
-    block_size: usize,
+    tx: SyncSender<Block>,
+    rx: Receiver<Block>,
 }
 
 impl PoolImpl {
@@ -17,7 +16,7 @@ impl PoolImpl {
             tx.send(Block::new(block_size)).expect("fill pool");
         }
 
-        Self { tx, rx, block_size }
+        Self { tx, rx }
     }
 }
 
