@@ -1,11 +1,10 @@
 use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 
-use super::{OwnedImpl, Pool, Releaser};
+use super::{block::Block, OwnedImpl, Pool, Releaser};
 
 pub struct PoolImpl {
-    tx: SyncSender<()>,
-    rx: Receiver<()>,
-    block_size: usize,
+    tx: SyncSender<Block>,
+    rx: Receiver<Block>,
 }
 
 impl PoolImpl {
@@ -13,10 +12,10 @@ impl PoolImpl {
         let (tx, rx) = sync_channel(capacity);
 
         for _ in 0..capacity {
-            tx.send(()).unwrap();
+            tx.send(Block::new(block_size)).unwrap();
         }
 
-        Self { tx, rx, block_size }
+        Self { tx, rx }
     }
 }
 
@@ -24,11 +23,8 @@ impl Pool for PoolImpl {
     type Buffer = OwnedImpl;
 
     fn acquire(&self) -> Result<Self::Buffer, crate::Error> {
-        self.rx.recv().expect("failed to acquire buffer");
+        let block = self.rx.recv().expect("failed to acquire buffer");
 
-        Ok(OwnedImpl::new(
-            self.block_size,
-            Releaser::new(self.tx.clone()),
-        ))
+        Ok(OwnedImpl::new(block, Releaser::new(self.tx.clone())))
     }
 }
