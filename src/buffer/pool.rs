@@ -6,6 +6,9 @@ use super::{block::Block, BufferOwner, OwnedImpl, Pool, Releaser};
 pub struct PoolImpl {
     tx: SyncSender<Block>,
     rx: Receiver<Block>,
+
+    block_size: usize,
+    capacity: usize,
 }
 
 impl PoolImpl {
@@ -16,7 +19,12 @@ impl PoolImpl {
             tx.send(Block::new(block_size)).expect("fill pool");
         }
 
-        Self { tx, rx }
+        Self {
+            tx,
+            rx,
+            block_size,
+            capacity,
+        }
     }
 }
 
@@ -108,5 +116,13 @@ mod tests {
         assert_eq!(buffer.unfilled_capacity(), 1024);
         let pool = pool.clone();
         let _buffer = pool.acquire("test");
+    }
+
+    fn block_size(&self) -> usize {
+        self.block_size
+    }
+
+    fn capacity(&self) -> usize {
+        self.capacity
     }
 }
