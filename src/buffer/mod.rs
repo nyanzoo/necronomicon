@@ -84,10 +84,15 @@ where
     buffer.fill(len);
 }
 
+// TODO: add a utilization fn for the pool
 pub trait Pool {
     type Buffer: Owned;
 
     fn acquire(&self) -> Result<Self::Buffer, Error>;
+
+    fn block_size(&self) -> usize;
+
+    fn capacity(&self) -> usize;
 }
 
 /// A mechanism for releasing memory back to the pool.
