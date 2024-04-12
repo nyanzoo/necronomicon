@@ -5,6 +5,9 @@ use super::{block::Block, OwnedImpl, Pool, Releaser};
 pub struct PoolImpl {
     tx: SyncSender<Block>,
     rx: Receiver<Block>,
+
+    block_size: usize,
+    capacity: usize,
 }
 
 impl PoolImpl {
@@ -15,7 +18,12 @@ impl PoolImpl {
             tx.send(Block::new(block_size)).unwrap();
         }
 
-        Self { tx, rx }
+        Self {
+            tx,
+            rx,
+            block_size,
+            capacity,
+        }
     }
 }
 
@@ -26,5 +34,13 @@ impl Pool for PoolImpl {
         let block = self.rx.recv().expect("failed to acquire buffer");
 
         Ok(OwnedImpl::new(block, Releaser::new(self.tx.clone())))
+    }
+
+    fn block_size(&self) -> usize {
+        self.block_size
+    }
+
+    fn capacity(&self) -> usize {
+        self.capacity
     }
 }
