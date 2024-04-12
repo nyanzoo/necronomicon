@@ -714,6 +714,7 @@ pub(crate) mod tests {
                 123,
                 456,
                 byte_str(b"/tmp/kitties"),
+                42,
                 binary_data(&[1, 2, 3]),
             )),
             Packet::TransferAck(TransferAck::new(SUCCESS)),
