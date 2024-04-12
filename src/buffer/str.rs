@@ -37,10 +37,7 @@ where
         self.0.data().as_slice()
     }
 
-    pub fn as_str(&self) -> Result<&str, std::str::Utf8Error>
-    where
-        S: Into<Vec<u8>>,
-    {
+    pub fn as_str(&self) -> Result<&str, std::str::Utf8Error> {
         std::str::from_utf8(self.0.data().as_slice())
     }
 }
