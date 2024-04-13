@@ -20,6 +20,23 @@ where
         Self { data }
     }
 
+    pub fn from_owned(data: impl AsRef<[u8]>, owned: &mut impl Owned<Shared = S>) -> Result<Self, Error> {
+        let len = data.as_ref().len();
+        if owned.unfilled_capacity() < len {
+            return Err(Error::OwnedRemaining {
+                acquire: len,
+                capacity: owned.unfilled_capacity(),
+            });
+        }
+        let buffer = owned.unfilled();
+        buffer[..len].copy_from_slice(data.as_ref());
+        owned.fill(len);
+        let data = owned.split_at(len);
+        let data = data.into_shared();
+
+        Ok(Self { data })
+    }
+
     pub fn len(&self) -> usize {
         self.data.len()
     }
