@@ -98,7 +98,7 @@ impl Header {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test"))]
     pub fn new_test_ack(kind: impl Into<Kind>) -> Self {
         Self::new_test(kind, 0)
     }
