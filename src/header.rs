@@ -88,7 +88,7 @@ impl Header {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "test"))]
     pub fn new_test(kind: impl Into<Kind>, len: usize) -> Self {
         Self {
             kind: kind.into(),
