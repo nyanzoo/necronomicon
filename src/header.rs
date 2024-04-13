@@ -89,13 +89,18 @@ impl Header {
     }
 
     #[cfg(any(test, feature = "test"))]
-    pub fn new_test(kind: impl Into<Kind>, len: usize) -> Self {
+    pub fn new_test_full(kind: impl Into<Kind>, len: usize, uuid: u128) -> Self {
         Self {
             kind: kind.into(),
             version: 1.into(),
-            uuid: 1.into(),
+            uuid: uuid.into(),
             len,
         }
+    }
+
+    #[cfg(any(test, feature = "test"))]
+    pub fn new_test(kind: impl Into<Kind>, len: usize) -> Self {
+        Self::new_test_full(kind, len, 0)
     }
 
     #[cfg(any(test, feature = "test"))]
