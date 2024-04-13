@@ -11,11 +11,15 @@ pub struct JoinAck {
 
 #[cfg(any(test, feature = "test"))]
 impl JoinAck {
-    pub fn new(response_code: u8) -> Self {
+    pub fn new(response_code: u8, uuid: u128) -> Self {
         Self {
-            header: Header::new_test_ack(Kind::JoinAck),
+            header: Header::new_test_full(Kind::JoinAck, 0, uuid),
             response_code,
         }
+    }
+
+    pub fn new_test(response_code: u8) -> Self {
+        Self::new(response_code, 0)
     }
 }
 
@@ -69,6 +73,6 @@ mod test {
 
     #[test]
     fn test_encode_decode() {
-        verify_encode_decode(Packet::JoinAck(JoinAck::new(SUCCESS)));
+        verify_encode_decode(Packet::JoinAck(JoinAck::new_test(SUCCESS)));
     }
 }
