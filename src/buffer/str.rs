@@ -17,6 +17,14 @@ where
         Self(data)
     }
 
+    pub fn from_owned<O>(data: impl AsRef<str>, owned: &mut O) -> Result<Self, Error>
+    where
+        O: Owned<Shared = S>,
+    {
+        let data = BinaryData::from_owned(data.as_ref().as_bytes(), owned)?;
+        Ok(Self::new(data))
+    }
+
     pub fn len(&self) -> usize {
         self.0.len()
     }
