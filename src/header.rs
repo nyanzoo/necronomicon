@@ -14,6 +14,12 @@ impl From<u8> for Version {
     }
 }
 
+impl From<Version> for u8 {
+    fn from(value: Version) -> Self {
+        value.0
+    }
+}
+
 impl<R> Decode<R> for Version
 where
     R: Read,
