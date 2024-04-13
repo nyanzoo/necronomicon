@@ -9,6 +9,16 @@ pub struct JoinAck {
     pub(crate) response_code: u8,
 }
 
+#[cfg(any(test, feature = "test"))]
+impl JoinAck {
+    pub fn new(response_code: u8) -> Self {
+        Self {
+            header: Header::new_test_ack(Kind::JoinAck),
+            response_code,
+        }
+    }
+}
+
 impl<R, O> PartialDecode<R, O> for JoinAck
 where
     R: Read,
@@ -53,18 +63,9 @@ impl Ack for JoinAck {
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::verify_encode_decode, Header, Kind, Packet, SUCCESS};
+    use crate::{tests::verify_encode_decode, Packet, SUCCESS};
 
     use super::JoinAck;
-
-    impl JoinAck {
-        pub fn new(response_code: u8) -> Self {
-            Self {
-                header: Header::new_test_ack(Kind::JoinAck),
-                response_code,
-            }
-        }
-    }
 
     #[test]
     fn test_encode_decode() {
