@@ -729,7 +729,7 @@ pub(crate) mod tests {
                 1,
                 false,
             )),
-            Packet::JoinAck(JoinAck::new(SUCCESS)),
+            Packet::JoinAck(JoinAck::new_test(SUCCESS)),
             Packet::Transfer(Transfer::new(
                 123,
                 456,
