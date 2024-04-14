@@ -1,9 +1,10 @@
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
+use crossbeam_channel::{bounded, Receiver, Sender};
 
 use super::{block::Block, OwnedImpl, Pool, Releaser};
 
+#[derive(Clone)]
 pub struct PoolImpl {
-    tx: SyncSender<Block>,
+    tx: Sender<Block>,
     rx: Receiver<Block>,
 
     block_size: usize,
@@ -12,7 +13,7 @@ pub struct PoolImpl {
 
 impl PoolImpl {
     pub fn new(block_size: usize, capacity: usize) -> Self {
-        let (tx, rx) = sync_channel(capacity);
+        let (tx, rx) = bounded(capacity);
 
         for _ in 0..capacity {
             tx.send(Block::new(block_size)).unwrap();

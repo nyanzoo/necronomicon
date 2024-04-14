@@ -1,13 +1,11 @@
-use std::{
-    fmt::Debug,
-    sync::{mpsc::SyncSender, Arc},
-};
+use std::{fmt::Debug, sync::Arc};
 
 use crate::Error;
 
 mod block;
 
 mod data;
+use crossbeam_channel::Sender;
 pub use data::BinaryData;
 
 mod owned;
@@ -98,10 +96,10 @@ pub trait Pool {
 /// A mechanism for releasing memory back to the pool.
 /// When this is dropped, it releases the memory back to the pool.
 #[derive(Clone)]
-pub(crate) struct Releaser(Arc<SyncSender<Block>>);
+pub(crate) struct Releaser(Arc<Sender<Block>>);
 
 impl Releaser {
-    pub fn new(sender: SyncSender<Block>) -> Self {
+    pub fn new(sender: Sender<Block>) -> Self {
         Self(Arc::new(sender))
     }
 
