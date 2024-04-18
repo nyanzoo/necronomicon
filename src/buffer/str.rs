@@ -1,10 +1,13 @@
-use std::io::{Read, Write};
+use std::{
+    fmt::{Debug, Formatter},
+    io::{Read, Write},
+};
 
 use crate::{DecodeOwned, Encode, Error};
 
 use super::{BinaryData, Owned, Shared};
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct ByteStr<S>(BinaryData<S>)
 where
     S: Shared;
@@ -47,6 +50,15 @@ where
 
     pub fn as_str(&self) -> Result<&str, std::str::Utf8Error> {
         std::str::from_utf8(self.0.data().as_slice())
+    }
+}
+
+impl<S> Debug for ByteStr<S>
+where
+    S: Shared,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.as_str().expect("str"))
     }
 }
 
