@@ -2,7 +2,7 @@
 
 use std::io::{Read, Write};
 
-use log::debug;
+use log::{debug, trace};
 
 mod buffer;
 #[cfg(any(test, feature = "test"))]
@@ -234,8 +234,13 @@ where
     R: Read,
     O: Owned,
 {
+    trace!("previous_decoded_header: {:?}", previous_decoded_header);
     // decoding the header does not use up buffer space.
-    let header = previous_decoded_header.unwrap_or(Header::decode(reader)?);
+    let header = if let Some(header) = previous_decoded_header {
+        header
+    } else {
+        Header::decode(reader)?
+    };
 
     if header.len > buffer.unfilled_capacity() {
         return Err(Error::BufferTooSmallForPacketDecode {
