@@ -11,9 +11,6 @@ pub enum Error {
         capacity: usize,
     },
 
-    #[error("expected buffer size {expected} < read bytes {read}")]
-    BinaryDataSizeMismatch { expected: usize, read: usize },
-
     #[error("decode err: {0}")]
     Decode(#[source] std::io::Error),
 
