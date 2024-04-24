@@ -86,16 +86,12 @@ where
                 capacity: buffer.unfilled_capacity(),
             });
         }
-        let read = {
+
+        {
             let buffer = buffer.unfilled();
-            reader.read(&mut buffer[..len]).map_err(Error::Io)?
-        };
-        if read != len {
-            return Err(Error::BinaryDataSizeMismatch {
-                expected: len,
-                read,
-            });
+            reader.read_exact(&mut buffer[..len]).map_err(Error::Io)?;
         }
+
         buffer.fill(len);
         let data = buffer.split_at(len);
         let data = data.into_shared();
