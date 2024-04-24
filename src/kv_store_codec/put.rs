@@ -1,5 +1,7 @@
 use std::io::{Read, Write};
 
+use log::trace;
+
 use crate::{
     buffer::{BinaryData, Owned, Shared},
     header::{Uuid, Version},
@@ -74,7 +76,9 @@ where
     {
         assert_eq!(header.kind, Kind::Put);
 
+        trace!("decode put key");
         let key = BinaryData::decode_owned(reader, buffer)?;
+        trace!("decode put value");
         let value = BinaryData::decode_owned(reader, buffer)?;
 
         Ok(Self { header, key, value })
