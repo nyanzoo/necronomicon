@@ -1,4 +1,7 @@
-use std::io::{Read, Write};
+use std::{
+    fmt::Debug,
+    io::{Read, Write},
+};
 
 use log::trace;
 
@@ -6,7 +9,7 @@ use crate::{Decode, DecodeOwned, Encode, Error};
 
 use super::{Owned, Shared};
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct BinaryData<S>
 where
     S: Shared,
@@ -22,7 +25,10 @@ where
         Self { data }
     }
 
-    pub fn from_owned(data: impl AsRef<[u8]>, owned: &mut impl Owned<Shared = S>) -> Result<Self, Error> {
+    pub fn from_owned(
+        data: impl AsRef<[u8]>,
+        owned: &mut impl Owned<Shared = S>,
+    ) -> Result<Self, Error> {
         let len = data.as_ref().len();
         if owned.unfilled_capacity() < len {
             trace!("data: {:?}", data.as_ref());
@@ -50,6 +56,17 @@ where
 
     pub fn data(&self) -> &S {
         &self.data
+    }
+}
+
+impl<S> Debug for BinaryData<S>
+where
+    S: Shared,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BinaryData")
+            .field("data", &self.data.as_slice())
+            .finish()
     }
 }
 
