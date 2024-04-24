@@ -1,5 +1,7 @@
 use std::io::{Read, Write};
 
+use log::trace;
+
 use crate::{Decode, DecodeOwned, Encode, Error};
 
 use super::{Owned, Shared};
@@ -23,6 +25,7 @@ where
     pub fn from_owned(data: impl AsRef<[u8]>, owned: &mut impl Owned<Shared = S>) -> Result<Self, Error> {
         let len = data.as_ref().len();
         if owned.unfilled_capacity() < len {
+            trace!("data: {:?}", data.as_ref());
             return Err(Error::OwnedRemaining {
                 acquire: len,
                 capacity: owned.unfilled_capacity(),
