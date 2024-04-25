@@ -1,6 +1,10 @@
 use std::io::{Read, Write};
 
-use crate::{header::VersionAndUuid, Encode, Error, Header, Kind, PartialDecode};
+use crate::{
+    buffer::Owned,
+    header::{Uuid, Version},
+    Encode, Error, Header, Kind, PartialDecode,
+};
 
 use super::PingAck;
 
@@ -11,9 +15,9 @@ pub struct Ping {
 }
 
 impl Ping {
-    pub fn new(version_and_uuid: impl Into<VersionAndUuid>) -> Self {
+    pub fn new(version: impl Into<Version>, uuid: impl Into<Uuid>) -> Self {
         Self {
-            header: version_and_uuid.into().into_header(Kind::Ping),
+            header: Header::new(Kind::Ping, version, uuid, 0),
         }
     }
 
@@ -23,20 +27,21 @@ impl Ping {
 
     pub fn ack(self) -> PingAck {
         PingAck {
-            header: Header::new(Kind::PingAck, self.header.version(), self.header.uuid()),
+            header: Header::new(Kind::PingAck, self.header.version, self.header.uuid, 0),
         }
     }
 }
 
-impl<R> PartialDecode<R> for Ping
+impl<R, O> PartialDecode<R, O> for Ping
 where
     R: Read,
+    O: Owned,
 {
-    fn decode(header: Header, _reader: &mut R) -> Result<Self, Error>
+    fn decode(header: Header, _reader: &mut R, _: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::Ping);
+        assert_eq!(header.kind, Kind::Ping);
 
         Ok(Self { header })
     }
@@ -55,22 +60,13 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::test_encode_decode_packet, Ack, Kind, SUCCESS};
+    use crate::{tests::verify_encode_decode, Ack, Packet, SUCCESS};
 
     use super::Ping;
 
     #[test]
-    fn test_new() {
-        let ping = Ping::new((1, 2));
-
-        assert_eq!(ping.header().kind(), Kind::Ping);
-        assert_eq!(ping.header().version(), 1);
-        assert_eq!(ping.header().uuid(), 2);
-    }
-
-    #[test]
     fn test_ack() {
-        let ping = Ping::new((1, 2));
+        let ping = Ping::new(1, 2);
         let ping_ack = ping.ack();
 
         assert_eq!(ping_ack.response_code(), SUCCESS);
@@ -78,6 +74,6 @@ mod test {
 
     #[test]
     fn test_encode_decode() {
-        test_encode_decode_packet!(Kind::Ping, Ping {});
+        verify_encode_decode(Packet::Ping(Ping::new(1, 2)));
     }
 }

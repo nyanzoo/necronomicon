@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::{Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
+use crate::{buffer::Owned, Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
@@ -10,15 +10,16 @@ pub struct LenAck {
     pub(crate) len: u64,
 }
 
-impl<R> PartialDecode<R> for LenAck
+impl<R, O> PartialDecode<R, O> for LenAck
 where
     R: Read,
+    O: Owned,
 {
-    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, _: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::LenAck);
+        assert_eq!(header.kind, Kind::LenAck);
 
         let response_code = u8::decode(reader)?;
         let len = u64::decode(reader)?;
@@ -56,32 +57,22 @@ impl Ack for LenAck {
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        tests::{test_ack_packet, test_encode_decode_packet},
-        Kind, SUCCESS,
-    };
+    use crate::{tests::verify_encode_decode, Header, Kind, Packet, SUCCESS};
 
     use super::LenAck;
 
-    #[test]
-    fn test_encode_decode() {
-        test_encode_decode_packet!(
-            Kind::LenAck,
-            LenAck {
-                response_code: SUCCESS,
-                len: 123,
+    impl LenAck {
+        pub fn new(response_code: u8, len: u64) -> Self {
+            Self {
+                header: Header::new(Kind::LenAck, 1, 1, 0),
+                response_code,
+                len,
             }
-        );
+        }
     }
 
     #[test]
-    fn test_ack() {
-        test_ack_packet!(
-            Kind::LenAck,
-            LenAck {
-                response_code: SUCCESS,
-                len: 123,
-            }
-        );
+    fn test_encode_decode() {
+        verify_encode_decode(Packet::LenAck(LenAck::new(SUCCESS, 123)));
     }
 }

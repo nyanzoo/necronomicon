@@ -1,21 +1,36 @@
 use std::io::{Read, Write};
 
-use crate::{header::VersionAndUuid, Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+use crate::{
+    buffer::{ByteStr, Owned, Shared},
+    header::{Uuid, Version},
+    Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+};
 
 use super::CreateAck;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub struct Create {
+pub struct Create<S>
+where
+    S: Shared,
+{
     pub(crate) header: Header,
-    pub(crate) path: String,
+    pub(crate) path: ByteStr<S>,
     pub(crate) node_size: u64,
 }
 
-impl Create {
-    pub fn new(version_and_uuid: impl Into<VersionAndUuid>, path: String, node_size: u64) -> Self {
+impl<S> Create<S>
+where
+    S: Shared,
+{
+    pub fn new(
+        version: impl Into<Version>,
+        uuid: impl Into<Uuid>,
+        path: ByteStr<S>,
+        node_size: u64,
+    ) -> Self {
         Self {
-            header: version_and_uuid.into().into_header(Kind::CreateQueue),
+            header: Header::new(Kind::CreateQueue, version, uuid, path.len()),
             path,
             node_size,
         }
@@ -25,7 +40,7 @@ impl Create {
         self.header
     }
 
-    pub fn path(&self) -> &str {
+    pub fn path(&self) -> &ByteStr<S> {
         &self.path
     }
 
@@ -37,8 +52,9 @@ impl Create {
         CreateAck {
             header: Header::new(
                 Kind::CreateQueueAck,
-                self.header.version(),
-                self.header.uuid(),
+                self.header.version,
+                self.header.uuid,
+                0,
             ),
             response_code: SUCCESS,
         }
@@ -48,25 +64,27 @@ impl Create {
         CreateAck {
             header: Header::new(
                 Kind::CreateQueueAck,
-                self.header.version(),
-                self.header.uuid(),
+                self.header.version,
+                self.header.uuid,
+                0,
             ),
             response_code,
         }
     }
 }
 
-impl<R> PartialDecode<R> for Create
+impl<R, O> PartialDecode<R, O> for Create<O::Shared>
 where
     R: Read,
+    O: Owned,
 {
-    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::CreateQueue);
+        assert_eq!(header.kind, Kind::CreateQueue);
 
-        let path = String::decode(reader)?;
+        let path = ByteStr::decode_owned(reader, buffer)?;
         let node_size = u64::decode(reader)?;
 
         Ok(Self {
@@ -77,9 +95,10 @@ where
     }
 }
 
-impl<W> Encode<W> for Create
+impl<W, S> Encode<W> for Create<S>
 where
     W: Write,
+    S: Shared,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
@@ -92,23 +111,25 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::test_encode_decode_packet, Ack, Kind, INTERNAL_ERROR, SUCCESS};
+    use crate::{
+        buffer::byte_str, tests::verify_encode_decode, Ack, Packet, INTERNAL_ERROR, SUCCESS,
+    };
 
     use super::Create;
 
     #[test]
     fn test_new() {
-        let create = Create::new((0, 1), "test".to_string(), 1024);
+        let create = Create::new(0, 1, byte_str(b"test"), 1024);
 
-        assert_eq!(create.header().version(), 0);
-        assert_eq!(create.header().uuid(), 1);
-        assert_eq!(create.path(), "test");
+        assert_eq!(create.header().version, 0.into());
+        assert_eq!(create.header().uuid, 1.into());
+        assert_eq!(create.path().as_slice(), b"test");
         assert_eq!(create.node_size(), 1024);
     }
 
     #[test]
     fn test_acks() {
-        let create = Create::new((0, 1), "test".to_string(), 1024);
+        let create = Create::new(0, 1, byte_str(b"test"), 1024);
 
         let ack = create.clone().ack();
         assert_eq!(ack.response_code(), SUCCESS);
@@ -119,12 +140,11 @@ mod test {
 
     #[test]
     fn test_encode_decode() {
-        test_encode_decode_packet!(
-            Kind::CreateQueue,
-            Create {
-                path: "test".to_string(),
-                node_size: 1024,
-            }
-        );
+        verify_encode_decode(Packet::CreateQueue(Create::new(
+            0,
+            1,
+            byte_str(b"test"),
+            1024,
+        )));
     }
 }

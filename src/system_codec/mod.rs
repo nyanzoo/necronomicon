@@ -1,5 +1,8 @@
 mod report;
-use std::io::{Read, Write};
+use std::{
+    io::{Read, Write},
+    mem::size_of,
+};
 
 pub use report::Report;
 
@@ -24,7 +27,10 @@ pub use ping::Ping;
 mod ping_ack;
 pub use ping_ack::PingAck;
 
-use crate::{Decode, Encode};
+use crate::{
+    buffer::{ByteStr, Owned, Shared},
+    Decode, DecodeOwned, Encode,
+};
 
 pub const START: u8 = 0x70;
 
@@ -53,15 +59,31 @@ pub fn is_system_message(kind: u8) -> bool {
 
 // Role + Identifier
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Role {
-    Backend(String),  // 1
-    Frontend(String), // 2
-    Observer,         // 3
+pub enum Role<S>
+where
+    S: Shared,
+{
+    Backend(ByteStr<S>),  // 1
+    Frontend(ByteStr<S>), // 2
+    Observer,             // 3
 }
 
-impl<W> Encode<W> for Role
+impl<S> Role<S>
+where
+    S: Shared,
+{
+    pub fn encode_len(&self) -> usize {
+        match self {
+            Role::Backend(addr) | Role::Frontend(addr) => addr.len(),
+            Role::Observer => 0,
+        }
+    }
+}
+
+impl<W, S> Encode<W> for Role<S>
 where
     W: Write,
+    S: Shared,
 {
     fn encode(&self, writer: &mut W) -> Result<(), crate::Error> {
         match self {
@@ -82,85 +104,78 @@ where
     }
 }
 
-impl<R> Decode<R> for Role
+impl<R, O> DecodeOwned<R, O> for Role<O::Shared>
 where
     R: Read,
+    O: Owned,
 {
-    fn decode(reader: &mut R) -> Result<Self, crate::Error>
+    fn decode_owned(reader: &mut R, buffer: &mut O) -> Result<Self, crate::Error>
     where
         Self: Sized,
     {
         let kind = u8::decode(reader)?;
         match kind {
-            1 => Ok(Role::Backend(String::decode(reader)?)),
-            2 => Ok(Role::Frontend(String::decode(reader)?)),
+            1 => Ok(Role::Backend(ByteStr::decode_owned(reader, buffer)?)),
+            2 => Ok(Role::Frontend(ByteStr::decode_owned(reader, buffer)?)),
             3 => Ok(Role::Observer),
             _ => Err(crate::Error::SystemBadRole(kind)),
         }
     }
 }
 
-impl<R> Decode<R> for Vec<Role>
-where
-    R: Read,
-{
-    fn decode(reader: &mut R) -> Result<Self, crate::Error>
-    where
-        Self: Sized,
-    {
-        let len = usize::decode(reader)?;
-        let mut roles = Vec::with_capacity(len);
-        for _ in 0..len {
-            roles.push(Role::decode(reader)?);
-        }
-
-        Ok(roles)
-    }
-}
-
-impl<W> Encode<W> for Vec<Role>
-where
-    W: Write,
-{
-    fn encode(&self, writer: &mut W) -> Result<(), crate::Error> {
-        self.len().encode(writer)?;
-        for role in self {
-            role.encode(writer)?;
-        }
-
-        Ok(())
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Position {
+pub enum Position<S>
+where
+    S: Shared,
+{
     // Backends
     Head {
-        next: String,
+        next: ByteStr<S>,
     }, // 1
     Middle {
-        next: String,
+        next: ByteStr<S>,
     }, // 2
     Tail {
-        candidate: Option<String>,
+        candidate: Option<ByteStr<S>>,
     }, // 3
     Candidate, // 4
 
     // Frontends
     Frontend {
-        head: Option<String>,
-        tail: Option<String>,
+        head: Option<ByteStr<S>>,
+        tail: Option<ByteStr<S>>,
     }, // 5
 
     // Observer
     Observer {
-        chain: Vec<Role>, // head -> tail
+        chain: Vec<Role<S>>, // head -> tail
     }, // 6
 }
 
-impl<W> Encode<W> for Position
+impl<S> Position<S>
+where
+    S: Shared,
+{
+    pub fn encode_len(&self) -> usize {
+        match self {
+            Position::Head { next } | Position::Middle { next } => next.len(),
+            Position::Tail { candidate } => candidate.as_ref().map(|c| c.len()).unwrap_or(0),
+            Position::Candidate => 0,
+            Position::Frontend { head, tail } => {
+                head.as_ref().map(|h| h.len()).unwrap_or(0)
+                    + tail.as_ref().map(|t| t.len()).unwrap_or(0)
+            }
+            Position::Observer { chain } => {
+                chain.iter().map(|role| role.encode_len()).sum::<usize>() + size_of::<u64>()
+            }
+        }
+    }
+}
+
+impl<W, S> Encode<W> for Position<S>
 where
     W: Write,
+    S: Shared,
 {
     fn encode(&self, writer: &mut W) -> Result<(), crate::Error> {
         match self {
@@ -199,11 +214,12 @@ where
     }
 }
 
-impl<R> Decode<R> for Position
+impl<R, O> DecodeOwned<R, O> for Position<O::Shared>
 where
     R: Read,
+    O: Owned,
 {
-    fn decode(reader: &mut R) -> Result<Self, crate::Error>
+    fn decode_owned(reader: &mut R, buffer: &mut O) -> Result<Self, crate::Error>
     where
         Self: Sized,
     {
@@ -211,29 +227,29 @@ where
         match kind {
             // Backends
             1 => {
-                let next = String::decode(reader)?;
+                let next = ByteStr::decode_owned(reader, buffer)?;
                 Ok(Position::Head { next })
             }
             2 => {
-                let next = String::decode(reader)?;
+                let next = ByteStr::decode_owned(reader, buffer)?;
                 Ok(Position::Middle { next })
             }
             3 => {
-                let candidate = Option::<String>::decode(reader)?;
+                let candidate = Option::decode_owned(reader, buffer)?;
                 Ok(Position::Tail { candidate })
             }
             4 => Ok(Position::Candidate),
 
             // Frontends
             5 => {
-                let head = Option::<String>::decode(reader)?;
-                let tail = Option::<String>::decode(reader)?;
+                let head = Option::decode_owned(reader, buffer)?;
+                let tail = Option::decode_owned(reader, buffer)?;
                 Ok(Position::Frontend { head, tail })
             }
 
             // Observer
             6 => {
-                let chain = Vec::<Role>::decode(reader)?;
+                let chain = Vec::decode_owned(reader, buffer)?;
                 Ok(Position::Observer { chain })
             }
 
@@ -247,7 +263,10 @@ where
 mod test {
     use matches::assert_matches;
 
-    use crate::{Decode, Encode};
+    use crate::{
+        buffer::{byte_str, Pool, PoolImpl},
+        DecodeOwned, Encode,
+    };
 
     use super::{Position, Role, END, START};
 
@@ -262,18 +281,25 @@ mod test {
     #[test]
     fn encode_decode_role() {
         for role in &[
-            Role::Backend("backend".to_string()),
-            Role::Frontend("frontend".to_string()),
+            Role::Backend(byte_str(b"backend")),
+            Role::Frontend(byte_str(b"frontend")),
             Role::Observer,
         ] {
             let mut bytes = Vec::new();
             role.encode(&mut bytes).unwrap();
-            let decoded = Role::decode(&mut bytes.as_slice()).unwrap();
+
+            let pool = PoolImpl::new(1024, 1);
+            let mut buffer = pool.acquire().unwrap();
+
+            let decoded = Role::decode_owned(&mut bytes.as_slice(), &mut buffer).unwrap();
             assert_eq!(*role, decoded);
         }
 
+        let pool = PoolImpl::new(1024, 1);
+        let mut buffer = pool.acquire().unwrap();
+
         assert_matches!(
-            Role::decode(&mut [0u8].as_ref()),
+            Role::decode_owned(&mut [0u8].as_ref(), &mut buffer),
             Err(crate::Error::SystemBadRole(0))
         );
     }
@@ -282,35 +308,42 @@ mod test {
     fn encode_decode_position() {
         for position in &[
             Position::Head {
-                next: "next".to_string(),
+                next: byte_str(b"next"),
             },
             Position::Middle {
-                next: "next".to_string(),
+                next: byte_str(b"next"),
             },
             Position::Tail {
-                candidate: Some("candidate".to_string()),
+                candidate: Some(byte_str(b"candidate")),
             },
             Position::Candidate,
             Position::Frontend {
-                head: Some("head".to_string()),
-                tail: Some("tail".to_string()),
+                head: Some(byte_str(b"head")),
+                tail: Some(byte_str(b"tail")),
             },
             Position::Observer {
                 chain: vec![
-                    Role::Backend("backend".to_string()),
-                    Role::Frontend("frontend".to_string()),
+                    Role::Backend(byte_str(b"backend")),
+                    Role::Frontend(byte_str(b"frontend")),
                     Role::Observer,
                 ],
             },
         ] {
             let mut bytes = Vec::new();
             position.encode(&mut bytes).unwrap();
-            let decoded = Position::decode(&mut bytes.as_slice()).unwrap();
+
+            let pool = PoolImpl::new(1024, 1);
+            let mut buffer = pool.acquire().unwrap();
+
+            let decoded = Position::decode_owned(&mut bytes.as_slice(), &mut buffer).unwrap();
             assert_eq!(*position, decoded);
         }
 
+        let pool = PoolImpl::new(1024, 1);
+        let mut buffer = pool.acquire().unwrap();
+
         assert_matches!(
-            Position::decode(&mut [0u8].as_ref()),
+            Position::decode_owned(&mut [0u8].as_ref(), &mut buffer),
             Err(crate::Error::SystemBadPosition(0))
         );
     }

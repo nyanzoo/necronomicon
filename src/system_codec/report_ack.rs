@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::{Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
+use crate::{buffer::Owned, Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
@@ -9,15 +9,16 @@ pub struct ReportAck {
     pub(crate) response_code: u8,
 }
 
-impl<R> PartialDecode<R> for ReportAck
+impl<R, O> PartialDecode<R, O> for ReportAck
 where
     R: Read,
+    O: Owned,
 {
-    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, _: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::ReportAck);
+        assert_eq!(header.kind, Kind::ReportAck);
 
         let response_code = u8::decode(reader)?;
 
@@ -52,30 +53,21 @@ impl Ack for ReportAck {
 
 #[cfg(test)]
 mod test {
-    use crate::{
-        tests::{test_ack_packet, test_encode_decode_packet},
-        Kind, SUCCESS,
-    };
+    use crate::{tests::verify_encode_decode, Header, Kind, Packet, SUCCESS};
 
     use super::ReportAck;
 
-    #[test]
-    fn test_encode_decode() {
-        test_encode_decode_packet!(
-            Kind::ReportAck,
-            ReportAck {
-                response_code: SUCCESS
+    impl ReportAck {
+        pub fn new(response_code: u8) -> Self {
+            Self {
+                header: Header::new_test_ack(Kind::ReportAck),
+                response_code,
             }
-        );
+        }
     }
 
     #[test]
-    fn test_ack() {
-        test_ack_packet!(
-            Kind::ReportAck,
-            ReportAck {
-                response_code: SUCCESS
-            }
-        );
+    fn test_encode_decode() {
+        verify_encode_decode(Packet::ReportAck(ReportAck::new(SUCCESS)));
     }
 }

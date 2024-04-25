@@ -1,20 +1,30 @@
 use std::io::{Read, Write};
 
-use crate::{header::VersionAndUuid, Decode, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+use crate::{
+    buffer::{ByteStr, Owned, Shared},
+    header::{Uuid, Version},
+    DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+};
 
 use super::LenAck;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub struct Len {
+pub struct Len<S>
+where
+    S: Shared,
+{
     pub(crate) header: Header,
-    pub(crate) path: String,
+    pub(crate) path: ByteStr<S>,
 }
 
-impl Len {
-    pub fn new(version_and_uuid: impl Into<VersionAndUuid>, path: String) -> Self {
+impl<S> Len<S>
+where
+    S: Shared,
+{
+    pub fn new(version: impl Into<Version>, uuid: impl Into<Uuid>, path: ByteStr<S>) -> Self {
         Self {
-            header: version_and_uuid.into().into_header(Kind::Len),
+            header: Header::new(Kind::Len, version, uuid, path.len()),
             path,
         }
     }
@@ -23,13 +33,13 @@ impl Len {
         self.header
     }
 
-    pub fn path(&self) -> &str {
+    pub fn path(&self) -> &ByteStr<S> {
         &self.path
     }
 
     pub fn ack(self, len: u64) -> LenAck {
         LenAck {
-            header: Header::new(Kind::LenAck, self.header.version(), self.header.uuid()),
+            header: Header::new(Kind::LenAck, self.header.version, self.header.uuid, 0),
             len,
             response_code: SUCCESS,
         }
@@ -37,32 +47,34 @@ impl Len {
 
     pub fn nack(self, response_code: u8) -> LenAck {
         LenAck {
-            header: Header::new(Kind::LenAck, self.header.version(), self.header.uuid()),
+            header: Header::new(Kind::LenAck, self.header.version, self.header.uuid, 0),
             len: 0,
             response_code,
         }
     }
 }
 
-impl<R> PartialDecode<R> for Len
+impl<R, O> PartialDecode<R, O> for Len<O::Shared>
 where
     R: Read,
+    O: Owned,
 {
-    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::Len);
+        assert_eq!(header.kind, Kind::Len);
 
-        let path = String::decode(reader)?;
+        let path = ByteStr::decode_owned(reader, buffer)?;
 
         Ok(Self { header, path })
     }
 }
 
-impl<W> Encode<W> for Len
+impl<W, S> Encode<W> for Len<S>
 where
     W: Write,
+    S: Shared,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
@@ -74,23 +86,25 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::test_encode_decode_packet, Ack, Kind, INTERNAL_ERROR, SUCCESS};
+    use crate::{
+        buffer::byte_str, tests::verify_encode_decode, Ack, Kind, Packet, INTERNAL_ERROR, SUCCESS,
+    };
 
     use super::Len;
 
     #[test]
     fn test_new() {
-        let len = Len::new((0, 1), "test".to_string());
+        let len = Len::new(0, 1, byte_str(b"test"));
 
-        assert_eq!(len.header().kind(), Kind::Len);
-        assert_eq!(len.header().version(), 0);
-        assert_eq!(len.header().uuid(), 1);
-        assert_eq!(len.path(), "test");
+        assert_eq!(len.header().kind, Kind::Len);
+        assert_eq!(len.header().version, 0.into());
+        assert_eq!(len.header().uuid, 1.into());
+        assert_eq!(len.path(), &byte_str(b"test"));
     }
 
     #[test]
     fn test_acks() {
-        let len = Len::new((0, 1), "test".to_string());
+        let len = Len::new(0, 1, byte_str(b"test"));
 
         let ack = len.clone().ack(1);
         assert_eq!(ack.response_code(), SUCCESS);
@@ -101,11 +115,6 @@ mod test {
 
     #[test]
     fn test_encode_decode() {
-        test_encode_decode_packet!(
-            Kind::Len,
-            Len {
-                path: "test".to_string(),
-            }
-        );
+        verify_encode_decode(Packet::Len(Len::new(0, 1, byte_str(b"test"))));
     }
 }

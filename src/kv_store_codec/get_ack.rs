@@ -1,33 +1,43 @@
 use std::io::{Read, Write};
 
-use crate::{Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
+use crate::{
+    buffer::{BinaryData, Owned, Shared},
+    Ack, Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub struct GetAck {
+pub struct GetAck<S>
+where
+    S: Shared,
+{
     pub(crate) header: Header,
     pub(crate) response_code: u8,
-    pub(crate) value: Vec<u8>,
+    pub(crate) value: Option<BinaryData<S>>,
 }
 
-impl GetAck {
-    pub fn value(&self) -> &[u8] {
-        &self.value
+impl<S> GetAck<S>
+where
+    S: Shared,
+{
+    pub fn value(&self) -> Option<&BinaryData<S>> {
+        self.value.as_ref()
     }
 }
 
-impl<R> PartialDecode<R> for GetAck
+impl<R, O> PartialDecode<R, O> for GetAck<O::Shared>
 where
     R: Read,
+    O: Owned,
 {
-    fn decode(header: Header, reader: &mut R) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
-        assert_eq!(header.kind(), Kind::GetAck);
+        assert_eq!(header.kind, Kind::GetAck);
 
         let response_code = u8::decode(reader)?;
-        let value = Vec::decode(reader)?;
+        let value = Option::decode_owned(reader, buffer)?;
 
         Ok(Self {
             header,
@@ -37,9 +47,10 @@ where
     }
 }
 
-impl<W> Encode<W> for GetAck
+impl<W, S> Encode<W> for GetAck<S>
 where
     W: Write,
+    S: Shared,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
@@ -50,7 +61,10 @@ where
     }
 }
 
-impl Ack for GetAck {
+impl<S> Ack for GetAck<S>
+where
+    S: Shared,
+{
     fn header(&self) -> &Header {
         &self.header
     }
@@ -63,31 +77,28 @@ impl Ack for GetAck {
 #[cfg(test)]
 mod test {
     use crate::{
-        tests::{test_ack_packet, test_encode_decode_packet},
-        Kind, SUCCESS,
+        buffer::{BinaryData, Shared},
+        tests::verify_encode_decode,
+        Header, Kind, Packet, SUCCESS,
     };
 
     use super::GetAck;
 
-    #[test]
-    fn test_encode_decode() {
-        test_encode_decode_packet!(
-            Kind::GetAck,
-            GetAck {
-                response_code: SUCCESS,
-                value: vec![1, 2, 3],
+    impl<S> GetAck<S>
+    where
+        S: Shared,
+    {
+        pub fn new(response_code: u8, value: Option<BinaryData<S>>) -> Self {
+            Self {
+                header: Header::new(Kind::GetAck, 1, 1, 0),
+                response_code,
+                value,
             }
-        );
+        }
     }
 
     #[test]
-    fn test_ack() {
-        test_ack_packet!(
-            Kind::GetAck,
-            GetAck {
-                response_code: SUCCESS,
-                value: vec![1, 2, 3],
-            }
-        );
+    fn test_encode_decode() {
+        verify_encode_decode(Packet::GetAck(GetAck::new(SUCCESS, None)));
     }
 }
