@@ -83,7 +83,7 @@ where
 }
 
 pub trait BufferOwner {
-    fn why(&self) -> String;
+    fn why(&self) -> &'static str;
 }
 
 // TODO: add a utilization fn for the pool
@@ -128,7 +128,7 @@ pub fn byte_str(data: &[u8]) -> ByteStr<SharedImpl> {
 
 #[cfg(any(test, feature = "test"))]
 impl BufferOwner for &'static str {
-    fn why(&self) -> String {
-        self.to_string()
+    fn why(&self) -> Self {
+        self
     }
 }
