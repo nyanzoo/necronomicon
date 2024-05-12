@@ -7,7 +7,9 @@ use log::{debug, trace};
 mod buffer;
 #[cfg(any(test, feature = "test"))]
 pub use buffer::{binary_data, byte_str};
-pub use buffer::{fill, BinaryData, ByteStr, Owned, OwnedImpl, Pool, PoolImpl, Shared, SharedImpl};
+pub use buffer::{
+    fill, BinaryData, BufferOwner, ByteStr, Owned, OwnedImpl, Pool, PoolImpl, Shared, SharedImpl,
+};
 
 mod codes;
 pub use codes::{
