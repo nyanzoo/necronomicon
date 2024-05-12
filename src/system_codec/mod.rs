@@ -289,14 +289,14 @@ mod test {
             role.encode(&mut bytes).unwrap();
 
             let pool = PoolImpl::new(1024, 1);
-            let mut buffer = pool.acquire().unwrap();
+            let mut buffer = pool.acquire("decode role").unwrap();
 
             let decoded = Role::decode_owned(&mut bytes.as_slice(), &mut buffer).unwrap();
             assert_eq!(*role, decoded);
         }
 
         let pool = PoolImpl::new(1024, 1);
-        let mut buffer = pool.acquire().unwrap();
+        let mut buffer = pool.acquire("decode role").unwrap();
 
         assert_matches!(
             Role::decode_owned(&mut [0u8].as_ref(), &mut buffer),
@@ -333,14 +333,14 @@ mod test {
             position.encode(&mut bytes).unwrap();
 
             let pool = PoolImpl::new(1024, 1);
-            let mut buffer = pool.acquire().unwrap();
+            let mut buffer = pool.acquire("decode position").unwrap();
 
             let decoded = Position::decode_owned(&mut bytes.as_slice(), &mut buffer).unwrap();
             assert_eq!(*position, decoded);
         }
 
         let pool = PoolImpl::new(1024, 1);
-        let mut buffer = pool.acquire().unwrap();
+        let mut buffer = pool.acquire("decode position").unwrap();
 
         assert_matches!(
             Position::decode_owned(&mut [0u8].as_ref(), &mut buffer),

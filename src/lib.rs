@@ -617,7 +617,7 @@ pub(crate) mod tests {
         let mut cursor = Cursor::new(bytes);
 
         let pool = PoolImpl::new(1024, 1);
-        let mut buffer = pool.acquire().expect("acquire");
+        let mut buffer = pool.acquire("full decode").expect("acquire");
 
         let decoded = full_decode(&mut cursor, &mut buffer, None).unwrap();
         assert_eq!(val, decoded);
@@ -628,15 +628,7 @@ pub(crate) mod tests {
         let packets = test_packets();
 
         for packet in packets {
-            let mut bytes = vec![];
-            packet.encode(&mut bytes).unwrap();
-            let mut cursor = Cursor::new(bytes);
-
-            let pool = PoolImpl::new(1024, 1);
-            let mut buffer = pool.acquire().expect("acquire");
-
-            let decoded = full_decode(&mut cursor, &mut buffer, None).unwrap();
-            assert_eq!(packet, decoded);
+            verify_encode_decode(packet);
         }
     }
 
@@ -671,7 +663,7 @@ pub(crate) mod tests {
         let mut cursor = Cursor::new(bytes);
 
         let pool = PoolImpl::new(1024, 1);
-        let mut buffer = pool.acquire().expect("acquire");
+        let mut buffer = pool.acquire("decode owned T").expect("acquire");
 
         let decoded = T::decode_owned(&mut cursor, &mut buffer).unwrap();
         assert_eq!(val, decoded);
