@@ -17,4 +17,5 @@ test-case = "3"
 
 [features]
 default = []
+timeout = []
 test = []

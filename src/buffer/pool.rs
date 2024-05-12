@@ -1,6 +1,7 @@
 use crossbeam_channel::{bounded, Receiver, Sender};
+use log::trace;
 
-use super::{block::Block, OwnedImpl, Pool, Releaser};
+use super::{block::Block, BufferOwner, OwnedImpl, Pool, Releaser};
 
 #[derive(Clone)]
 pub struct PoolImpl {
@@ -31,9 +32,16 @@ impl PoolImpl {
 impl Pool for PoolImpl {
     type Buffer = OwnedImpl;
 
-    fn acquire(&self) -> Result<Self::Buffer, crate::Error> {
+    fn acquire(&self, reason: impl BufferOwner) -> Result<Self::Buffer, crate::Error> {
+        trace!("acquiring buffer for {}", reason.why());
+        #[cfg(feature = "timeout")]
+        let block = self
+            .rx
+            .recv_timeout(std::time::Duration::from_secs(1))
+            .expect("failed to acquire buffer");
+        #[cfg(not(feature = "timeout"))]
         let block = self.rx.recv().expect("failed to acquire buffer");
-
+        trace!("acquired buffer for {}", reason.why());
         Ok(OwnedImpl::new(block, Releaser::new(self.tx.clone())))
     }
 
