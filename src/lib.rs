@@ -619,7 +619,7 @@ pub(crate) mod tests {
         let mut cursor = Cursor::new(bytes);
 
         let pool = PoolImpl::new(1024, 1);
-        let mut buffer = pool.acquire("full decode").expect("acquire");
+        let mut buffer = pool.acquire("full decode");
 
         let decoded = full_decode(&mut cursor, &mut buffer, None).unwrap();
         assert_eq!(val, decoded);
@@ -665,7 +665,7 @@ pub(crate) mod tests {
         let mut cursor = Cursor::new(bytes);
 
         let pool = PoolImpl::new(1024, 1);
-        let mut buffer = pool.acquire("decode owned T").expect("acquire");
+        let mut buffer = pool.acquire("decode owned T");
 
         let decoded = T::decode_owned(&mut cursor, &mut buffer).unwrap();
         assert_eq!(val, decoded);

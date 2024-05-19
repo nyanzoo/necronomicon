@@ -1,7 +1,5 @@
 use std::{fmt::Debug, sync::Arc};
 
-use crate::Error;
-
 mod block;
 
 mod data;
@@ -90,7 +88,7 @@ pub trait BufferOwner {
 pub trait Pool {
     type Buffer: Owned;
 
-    fn acquire(&self, reason: impl BufferOwner) -> Result<Self::Buffer, Error>;
+    fn acquire(&self, reason: impl BufferOwner) -> Self::Buffer;
 
     fn block_size(&self) -> usize;
 
