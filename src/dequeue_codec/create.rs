@@ -51,6 +51,10 @@ where
         self.node_size
     }
 
+    pub fn max_disk_usage(&self) -> u64 {
+        self.max_disk_usage
+    }
+
     pub fn ack(self) -> CreateAck {
         CreateAck {
             header: Header::new(
