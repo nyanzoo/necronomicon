@@ -17,6 +17,7 @@ where
     pub(crate) header: Header,
     pub(crate) path: ByteStr<S>,
     pub(crate) node_size: u64,
+    pub(crate) max_disk_usage: u64,
 }
 
 impl<S> Create<S>
@@ -28,11 +29,13 @@ where
         uuid: impl Into<Uuid>,
         path: ByteStr<S>,
         node_size: u64,
+        max_disk_usage: u64,
     ) -> Self {
         Self {
             header: Header::new(Kind::CreateQueue, version, uuid, path.len()),
             path,
             node_size,
+            max_disk_usage,
         }
     }
 
@@ -86,11 +89,13 @@ where
 
         let path = ByteStr::decode_owned(reader, buffer)?;
         let node_size = u64::decode(reader)?;
+        let max_disk_usage = u64::decode(reader)?;
 
         Ok(Self {
             header,
             path,
             node_size,
+            max_disk_usage,
         })
     }
 }
@@ -104,6 +109,7 @@ where
         self.header.encode(writer)?;
         self.path.encode(writer)?;
         self.node_size.encode(writer)?;
+        self.max_disk_usage.encode(writer)?;
 
         Ok(())
     }
@@ -119,7 +125,7 @@ mod test {
 
     #[test]
     fn test_new() {
-        let create = Create::new(0, 1, byte_str(b"test"), 1024);
+        let create = Create::new(0, 1, byte_str(b"test"), 1024, 1024 * 1024);
 
         assert_eq!(create.header().version, 0.into());
         assert_eq!(create.header().uuid, 1.into());
@@ -129,7 +135,7 @@ mod test {
 
     #[test]
     fn test_acks() {
-        let create = Create::new(0, 1, byte_str(b"test"), 1024);
+        let create = Create::new(0, 1, byte_str(b"test"), 1024, 1024 * 1024);
 
         let ack = create.clone().ack();
         assert_eq!(ack.response_code(), SUCCESS);
@@ -145,6 +151,7 @@ mod test {
             1,
             byte_str(b"test"),
             1024,
+            1024 * 1024,
         )));
     }
 }
