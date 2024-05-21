@@ -695,6 +695,7 @@ pub(crate) mod tests {
                 1,
                 byte_str(b"test"),
                 123,
+                1024,
             )),
             Packet::CreateQueueAck(crate::dequeue_codec::CreateAck::new(SUCCESS)),
             Packet::DeleteQueue(crate::dequeue_codec::Delete::new(1, 1, byte_str(b"test"))),
