@@ -69,6 +69,12 @@ impl Ord for SharedImpl {
     }
 }
 
+impl Hash for SharedImpl {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.inner.hash(state);
+    }
+}
+
 impl SharedImpl {
     pub(crate) fn new(inner: Block, releaser: Releaser) -> Self {
         Self {
