@@ -9,7 +9,7 @@ use crate::{Decode, DecodeOwned, Encode, Error};
 
 use super::{Owned, Shared};
 
-#[derive(Clone, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct BinaryData<S>
 where
     S: Shared,

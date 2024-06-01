@@ -7,7 +7,7 @@ use crate::{DecodeOwned, Encode, Error};
 
 use super::{BinaryData, Owned, Shared};
 
-#[derive(Clone, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct ByteStr<S>(BinaryData<S>)
 where
     S: Shared;

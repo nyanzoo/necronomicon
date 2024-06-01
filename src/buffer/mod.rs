@@ -1,4 +1,4 @@
-use std::{fmt::Debug, sync::Arc};
+use std::{fmt::Debug, hash::Hash, sync::Arc};
 
 mod block;
 
@@ -22,7 +22,7 @@ use self::block::Block;
 
 /// A thread-safe read-only buffer.
 pub trait Shared:
-    Send + Sync + AsRef<[u8]> + Clone + Debug + Eq + PartialEq + PartialOrd + Ord
+    Send + Sync + AsRef<[u8]> + Clone + Debug + Eq + PartialEq + PartialOrd + Ord + Hash
 {
     /// Returns the length of the buffer.
     fn len(&self) -> usize {

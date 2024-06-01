@@ -1,6 +1,7 @@
 use std::{
     cmp,
     fmt::{self, Debug, Formatter},
+    hash::Hash,
 };
 
 use super::{Block, Releaser};
@@ -44,6 +45,12 @@ impl PartialOrd for SharedImpl {
 impl Ord for SharedImpl {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         self.inner.cmp(&other.inner)
+    }
+}
+
+impl Hash for SharedImpl {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.inner.hash(state);
     }
 }
 
