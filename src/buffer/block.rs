@@ -1,4 +1,4 @@
-use std::{cell::UnsafeCell, fmt::Debug, ops::Range, sync::Arc};
+use std::{cell::UnsafeCell, fmt::Debug, hash::Hash, ops::Range, sync::Arc};
 
 /// A read-write block of memory. This the mutable version of `Block`.
 #[derive(Clone)]
@@ -79,6 +79,12 @@ impl PartialOrd for Block {
 impl Ord for Block {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.as_slice().cmp(other.as_slice())
+    }
+}
+
+impl Hash for Block {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.as_slice().hash(state)
     }
 }
 
