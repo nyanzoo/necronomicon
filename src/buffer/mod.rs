@@ -80,7 +80,7 @@ where
     buffer.fill(len);
 }
 
-pub trait BufferOwner {
+pub trait BufferOwner: Copy {
     fn why(&self) -> &'static str;
 }
 
