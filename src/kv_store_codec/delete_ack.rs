@@ -67,7 +67,7 @@ mod test {
     }
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::DeleteAck(DeleteAck::new(SUCCESS)));
     }
 }

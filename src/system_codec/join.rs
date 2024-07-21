@@ -127,7 +127,7 @@ mod test {
     use super::Join;
 
     #[test]
-    fn test_acks() {
+    fn acks() {
         let join = Join::new(1, 2, Role::Backend(byte_str(b"localhost")), 1, false);
 
         let ack = join.clone().ack();
@@ -138,7 +138,7 @@ mod test {
     }
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::Join(Join::new(
             1,
             1,

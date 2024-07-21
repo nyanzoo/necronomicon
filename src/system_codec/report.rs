@@ -109,7 +109,7 @@ mod test {
     }
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::Report(Report::new(
             1,
             2,

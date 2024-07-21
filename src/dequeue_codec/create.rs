@@ -138,7 +138,7 @@ mod test {
     }
 
     #[test]
-    fn test_acks() {
+    fn acks() {
         let create = Create::new(0, 1, byte_str(b"test"), 1024, 1024 * 1024);
 
         let ack = create.clone().ack();
@@ -149,7 +149,7 @@ mod test {
     }
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::CreateQueue(Create::new(
             0,
             1,

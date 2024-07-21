@@ -110,7 +110,7 @@ mod test {
     use super::Enqueue;
 
     #[test]
-    fn test_acks() {
+    fn acks() {
         let enqueue = Enqueue::new(0, 0, byte_str(b"test"), binary_data(&[1, 2, 3]));
 
         let ack = enqueue.clone().ack();
@@ -121,7 +121,7 @@ mod test {
     }
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::Enqueue(Enqueue::new(
             1,
             1,

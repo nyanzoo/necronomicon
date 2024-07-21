@@ -102,7 +102,7 @@ mod test {
     }
 
     #[test]
-    fn test_acks() {
+    fn acks() {
         let delete = Delete::new(0, 1, test_key());
 
         let ack = delete.clone().ack();
@@ -113,7 +113,7 @@ mod test {
     }
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::Delete(Delete::new(0, 1, test_key())));
     }
 }

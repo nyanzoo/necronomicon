@@ -120,7 +120,7 @@ mod test {
     use super::Transfer;
 
     #[test]
-    fn test_acks() {
+    fn acks() {
         let transfer = Transfer::new(
             1,
             2,
@@ -137,7 +137,7 @@ mod test {
     }
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::Transfer(Transfer::new(
             1,
             2,

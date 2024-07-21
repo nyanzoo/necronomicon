@@ -72,7 +72,7 @@ mod test {
     use super::JoinAck;
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::JoinAck(JoinAck::new_test(SUCCESS)));
     }
 }

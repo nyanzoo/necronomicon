@@ -100,7 +100,7 @@ mod test {
     use super::Peek;
 
     #[test]
-    fn test_acks() {
+    fn acks() {
         let peek = Peek::new(1, 2, byte_str(b"test"));
 
         let ack = peek.clone().ack(binary_data(&[1, 2, 3]));
@@ -111,7 +111,7 @@ mod test {
     }
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::Peek(Peek::new(1, 1, byte_str(b"test"))));
     }
 }

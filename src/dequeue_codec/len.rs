@@ -103,7 +103,7 @@ mod test {
     }
 
     #[test]
-    fn test_acks() {
+    fn acks() {
         let len = Len::new(0, 1, byte_str(b"test"));
 
         let ack = len.clone().ack(1);
@@ -114,7 +114,7 @@ mod test {
     }
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::Len(Len::new(0, 1, byte_str(b"test"))));
     }
 }

@@ -109,7 +109,7 @@ mod test {
     }
 
     #[test]
-    fn test_acks() {
+    fn acks() {
         let get = Get::new(1, 1, test_key());
 
         let ack = get.clone().ack(binary_data(&[1, 2, 3]));
@@ -120,7 +120,7 @@ mod test {
     }
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::Get(Get::new(1, 1, test_key())));
     }
 }

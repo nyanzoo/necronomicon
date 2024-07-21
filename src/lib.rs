@@ -641,7 +641,7 @@ pub(crate) mod tests {
     #[test_case::test_case(1usize; "usize")]
     #[test_case::test_case(vec![1, 2, 3]; "vec")]
     #[test_case::test_case(Some(1u8); "option")]
-    fn test_encode_decode<T>(val: T)
+    fn encode_decode<T>(val: T)
     where
         T: Decode<Cursor<Vec<u8>>> + Encode<Vec<u8>> + Debug + PartialEq,
     {
@@ -656,7 +656,7 @@ pub(crate) mod tests {
     #[test_case::test_case(vec![byte_str(b"kittens")]; "vec")]
     #[test_case::test_case(Some(byte_str(b"data")); "option")]
     #[test_case::test_case(vec![Role::Backend(byte_str(b"test")), Role::Observer]; "role")]
-    fn test_encode_decode_owned<T>(val: T)
+    fn encode_decode_owned<T>(val: T)
     where
         T: DecodeOwned<Cursor<Vec<u8>>, OwnedImpl> + Encode<Vec<u8>> + Debug + PartialEq,
     {
