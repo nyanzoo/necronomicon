@@ -38,7 +38,7 @@ impl Pool for PoolImpl {
         let block = self
             .rx
             .recv_timeout(std::time::Duration::from_secs(1))
-            .expect("failed to acquire buffer");
+            .expect(&format!("failed to acquire buffer for {}", reason.why()));
         #[cfg(not(feature = "timeout"))]
         let block = self.rx.recv().expect("failed to acquire buffer");
         trace!("acquired buffer for {}", reason.why());
