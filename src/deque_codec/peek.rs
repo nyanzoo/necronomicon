@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{BinaryData, ByteStr, Owned, Shared},
     header::{Uuid, Version},
-    DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
 };
 
 use super::PeekAck;
@@ -16,16 +16,23 @@ where
 {
     pub(crate) header: Header,
     pub(crate) path: ByteStr<S>,
+    pub(crate) sequence: u64,
 }
 
 impl<S> Peek<S>
 where
     S: Shared,
 {
-    pub fn new(version: impl Into<Version>, uuid: impl Into<Uuid>, path: ByteStr<S>) -> Self {
+    pub fn new(
+        version: impl Into<Version>,
+        uuid: impl Into<Uuid>,
+        path: ByteStr<S>,
+        sequence: u64,
+    ) -> Self {
         Self {
             header: Header::new(Kind::Peek, version, uuid, path.len()),
             path,
+            sequence,
         }
     }
 
@@ -71,8 +78,13 @@ where
         assert_eq!(header.kind, Kind::Peek);
 
         let path = ByteStr::decode_owned(reader, buffer)?;
+        let sequence = u64::decode(reader)?;
 
-        Ok(Self { header, path })
+        Ok(Self {
+            header,
+            path,
+            sequence,
+        })
     }
 }
 
@@ -101,7 +113,7 @@ mod test {
 
     #[test]
     fn acks() {
-        let peek = Peek::new(1, 2, byte_str(b"test"));
+        let peek = Peek::new(1, 2, byte_str(b"test"), 0);
 
         let ack = peek.clone().ack(binary_data(&[1, 2, 3]));
         assert_eq!(ack.response_code(), SUCCESS);
@@ -112,6 +124,6 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::Peek(Peek::new(1, 1, byte_str(b"test"))));
+        verify_encode_decode(Packet::Peek(Peek::new(1, 1, byte_str(b"test"), 0)));
     }
 }
