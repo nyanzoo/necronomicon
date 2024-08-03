@@ -3,7 +3,7 @@ pub const SUCCESS: u8 = 0x00;
 
 // Error cases
 pub const SERVER_BUSY: u8 = 0x10;
-// dequeue
+// deque
 pub const QUEUE_DOES_NOT_EXIST: u8 = 0x11;
 pub const QUEUE_ALREADY_EXISTS: u8 = 0x12;
 pub const QUEUE_FULL: u8 = 0x13;

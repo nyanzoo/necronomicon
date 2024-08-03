@@ -25,7 +25,7 @@ where
     where
         Self: Sized,
     {
-        assert_eq!(header.kind, Kind::DequeueAck);
+        assert_eq!(header.kind, Kind::DequeAck);
 
         let response_code = u8::decode(reader)?;
         let value = Option::decode_owned(reader, buffer)?;
@@ -78,7 +78,7 @@ mod tests {
     impl DequeueAck<SharedImpl> {
         pub fn new(response_code: u8, value: Option<BinaryData<SharedImpl>>) -> Self {
             Self {
-                header: Header::new_test_ack(Kind::DequeueAck),
+                header: Header::new_test_ack(Kind::DequeAck),
                 response_code,
                 value,
             }

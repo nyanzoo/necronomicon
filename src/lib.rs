@@ -1,4 +1,4 @@
-#![cfg_attr(nightly, feature(no_coverage))]
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 use std::io::{Read, Write};
 
@@ -18,8 +18,8 @@ pub use codes::{
     SERVER_BUSY, SUCCESS,
 };
 
-pub mod dequeue_codec;
-use dequeue_codec::{
+pub mod deque_codec;
+use deque_codec::{
     Create, CreateAck, Delete as DeleteQueue, DeleteAck as DeleteQueueAck, Dequeue, DequeueAck,
     Enqueue, EnqueueAck, Len, LenAck, Peek, PeekAck,
 };
@@ -44,7 +44,7 @@ pub enum Packet<S>
 where
     S: Shared,
 {
-    // dequeue
+    // deque
     Enqueue(Enqueue<S>),
     EnqueueAck(EnqueueAck),
     Dequeue(Dequeue<S>),
@@ -83,7 +83,7 @@ where
 {
     pub fn header(&self) -> Header {
         match self {
-            // dequeue
+            // deque
             Packet::Enqueue(packet) => packet.header,
             Packet::EnqueueAck(packet) => packet.header,
             Packet::Dequeue(packet) => packet.header,
@@ -119,7 +119,7 @@ where
 
     pub fn nack(self, response_code: u8) -> Option<Self> {
         match self {
-            // dequeue
+            // deque
             Packet::Enqueue(this) => Some(Packet::EnqueueAck(this.nack(response_code))),
             Packet::Dequeue(this) => Some(Packet::DequeueAck(this.nack(response_code))),
             Packet::Peek(this) => Some(Packet::PeekAck(this.nack(response_code))),
@@ -172,11 +172,11 @@ where
 {
     debug!("partial_decode: {:?}", header);
     let packet = match header.kind {
-        // dequeue messages
+        // deque messages
         Kind::Enqueue => Packet::Enqueue(Enqueue::decode(header, reader, buffer)?),
         Kind::EnqueueAck => Packet::EnqueueAck(EnqueueAck::decode(header, reader, buffer)?),
-        Kind::Dequeue => Packet::Dequeue(Dequeue::decode(header, reader, buffer)?),
-        Kind::DequeueAck => Packet::DequeueAck(DequeueAck::decode(header, reader, buffer)?),
+        Kind::Deque => Packet::Dequeue(Dequeue::decode(header, reader, buffer)?),
+        Kind::DequeAck => Packet::DequeueAck(DequeueAck::decode(header, reader, buffer)?),
         Kind::Peek => Packet::Peek(Peek::decode(header, reader, buffer)?),
         Kind::PeekAck => Packet::PeekAck(PeekAck::decode(header, reader, buffer)?),
         Kind::Len => Packet::Len(Len::decode(header, reader, buffer)?),
@@ -219,7 +219,7 @@ where
 /// * `reader` - The reader to decode from.
 /// * `buffer` - The buffer to place the decoded value into.
 /// * `previous_decoded_header` - The previous header that was decoded. This is useful for when
-///  we failed to have enough buffer to decode the full packet. We can use this to try again with a new buffer.
+///   we failed to have enough buffer to decode the full packet. We can use this to try again with a new buffer.
 ///
 /// # Errors
 /// This function will return an error if the data cannot be decoded from the reader along with a previous header if any.
@@ -346,7 +346,7 @@ mod packet {
         fn encode(&self, writer: &mut W) -> Result<(), Error> {
             debug!("encode: {:?}", self);
             match self {
-                // dequeue
+                // deque
                 Packet::Enqueue(packet) => packet.encode(writer),
                 Packet::EnqueueAck(packet) => packet.encode(writer),
                 Packet::Dequeue(packet) => packet.encode(writer),
@@ -673,33 +673,33 @@ pub(crate) mod tests {
 
     fn test_packets() -> Vec<Packet<SharedImpl>> {
         vec![
-            Packet::Enqueue(crate::dequeue_codec::Enqueue::new(
+            Packet::Enqueue(crate::deque_codec::Enqueue::new(
                 123,
                 456,
                 byte_str(b"hello"),
                 binary_data(&[1, 2, 3]),
             )),
-            Packet::EnqueueAck(crate::dequeue_codec::EnqueueAck::new(SUCCESS)),
-            Packet::Dequeue(crate::dequeue_codec::Dequeue::new(
+            Packet::EnqueueAck(crate::deque_codec::EnqueueAck::new(SUCCESS)),
+            Packet::Dequeue(crate::deque_codec::Dequeue::new(
                 123,
                 456,
                 byte_str(b"test"),
             )),
-            Packet::DequeueAck(crate::dequeue_codec::DequeueAck::new(SUCCESS, None)),
-            Packet::Peek(crate::dequeue_codec::Peek::new(1, 1, byte_str(b"test"))),
-            Packet::PeekAck(crate::dequeue_codec::PeekAck::new(SUCCESS, None)),
-            Packet::Len(crate::dequeue_codec::Len::new(1, 1, byte_str(b"test"))),
-            Packet::LenAck(crate::dequeue_codec::LenAck::new(SUCCESS, 1)),
-            Packet::CreateQueue(crate::dequeue_codec::Create::new(
+            Packet::DequeueAck(crate::deque_codec::DequeueAck::new(SUCCESS, None)),
+            Packet::Peek(crate::deque_codec::Peek::new(1, 1, byte_str(b"test"))),
+            Packet::PeekAck(crate::deque_codec::PeekAck::new(SUCCESS, None)),
+            Packet::Len(crate::deque_codec::Len::new(1, 1, byte_str(b"test"))),
+            Packet::LenAck(crate::deque_codec::LenAck::new(SUCCESS, 1)),
+            Packet::CreateQueue(crate::deque_codec::Create::new(
                 1,
                 1,
                 byte_str(b"test"),
                 123,
                 1024,
             )),
-            Packet::CreateQueueAck(crate::dequeue_codec::CreateAck::new(SUCCESS)),
-            Packet::DeleteQueue(crate::dequeue_codec::Delete::new(1, 1, byte_str(b"test"))),
-            Packet::DeleteQueueAck(crate::dequeue_codec::DeleteAck::new(SUCCESS)),
+            Packet::CreateQueueAck(crate::deque_codec::CreateAck::new(SUCCESS)),
+            Packet::DeleteQueue(crate::deque_codec::Delete::new(1, 1, byte_str(b"test"))),
+            Packet::DeleteQueueAck(crate::deque_codec::DeleteAck::new(SUCCESS)),
             Packet::Put(crate::kv_store_codec::Put::new(
                 1,
                 1,

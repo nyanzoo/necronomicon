@@ -70,18 +70,21 @@ impl PartialEq for Block {
 
 impl Eq for Block {}
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl PartialOrd for Block {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl Ord for Block {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.as_slice().cmp(other.as_slice())
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl Hash for Block {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.as_slice().hash(state)
@@ -90,3 +93,27 @@ impl Hash for Block {
 
 unsafe impl Send for Block {}
 unsafe impl Sync for Block {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn debug() {
+        let mut block = Block::new(10);
+        assert_eq!(
+            format!("{:?}", block),
+            "Block { data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], range: 0..10 }"
+        );
+
+        let other = block.split_at(4);
+        assert_eq!(
+            format!("{:?}", other),
+            "Block { data: [0, 0, 0, 0], range: 0..4 }"
+        );
+        assert_eq!(
+            format!("{:?}", block),
+            "Block { data: [0, 0, 0, 0, 0, 0], range: 4..10 }"
+        );
+    }
+}

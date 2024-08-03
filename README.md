@@ -3,7 +3,7 @@
 # necronomicon
 This is the codec for [lichdom](https://github.com/nyanzoo/lichdom)
 
-# Dequeue
+# Deque
 
 # KV Store
 
@@ -71,6 +71,6 @@ A command that is sent from the operator to nodes in the cluster to check if the
 Sent from `Tail` to `Candidate` to transfer its data to the `Candidate`. After the `Tail` has completed the transfer it will send a `Join` to the `Operator` to become a `Replica`.
 
 ## Join
-This is sent from a Candidate node to the `Operator` to request to join the cluster after it has completed [Transfer](#transfer). After the `Operator` receives a `Join` it will send a `Report` to all nodes with the updated `Tail`. 
+This is sent from a Candidate node to the `Operator` to request to join the cluster after it has completed [Transfer](#transfer). After the `Operator` receives a `Join` it will send a `Report` to all nodes with the updated `Tail`.
 
 This also will be sent after [Transfer](#transfer) if the `Tail` has completed sending over its data to the `Candidate`. The `Report` as mentioned above will only be sent after getting both `Join`s from the `Tail` and `Candidate` nodes to maintain atomicity.

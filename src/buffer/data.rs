@@ -112,3 +112,24 @@ where
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Pool, PoolImpl};
+
+    #[test]
+    fn binary_data() {
+        let data = vec![1, 2, 3, 4, 5];
+        let pool = PoolImpl::new(10, 10);
+        let mut buffer = pool.acquire("test");
+        let binary_data = BinaryData::from_owned(&data, &mut buffer).expect("from_owned");
+        assert_eq!(binary_data.len(), 5);
+        assert!(!binary_data.is_empty());
+        assert_eq!(binary_data.data().as_slice(), &[1, 2, 3, 4, 5]);
+
+        let mut buffer = pool.acquire("test");
+        let binary_data = BinaryData::from_owned([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], &mut buffer);
+        assert!(binary_data.is_err());
+    }
+}

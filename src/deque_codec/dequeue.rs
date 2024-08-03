@@ -24,7 +24,7 @@ where
 {
     pub fn new(version: impl Into<Version>, uuid: impl Into<Uuid>, path: ByteStr<S>) -> Self {
         Self {
-            header: Header::new(Kind::Dequeue, version, uuid, path.len()),
+            header: Header::new(Kind::Deque, version, uuid, path.len()),
             path,
         }
     }
@@ -43,7 +43,7 @@ where
     {
         DequeueAck {
             header: Header::new(
-                Kind::DequeueAck,
+                Kind::DequeAck,
                 self.header.version,
                 self.header.uuid,
                 value.len(),
@@ -55,7 +55,7 @@ where
 
     pub fn nack(self, response_code: u8) -> DequeueAck<S> {
         DequeueAck {
-            header: Header::new(Kind::DequeueAck, self.header.version, self.header.uuid, 0),
+            header: Header::new(Kind::DequeAck, self.header.version, self.header.uuid, 0),
             response_code,
             value: None,
         }
@@ -71,7 +71,7 @@ where
     where
         Self: Sized,
     {
-        assert_eq!(header.kind, Kind::Dequeue);
+        assert_eq!(header.kind, Kind::Deque);
 
         let path = ByteStr::decode_owned(reader, buffer)?;
 
@@ -104,12 +104,12 @@ mod test {
 
     #[test]
     fn acks() {
-        let dequeue = Dequeue::new(1, 2, byte_str(b"test"));
+        let deque = Dequeue::new(1, 2, byte_str(b"test"));
 
-        let ack = dequeue.clone().ack(binary_data(&[1, 2, 3]));
+        let ack = deque.clone().ack(binary_data(&[1, 2, 3]));
         assert_eq!(ack.response_code(), SUCCESS);
 
-        let nack = dequeue.nack(INTERNAL_ERROR);
+        let nack = deque.nack(INTERNAL_ERROR);
         assert_eq!(nack.response_code(), INTERNAL_ERROR);
     }
 
