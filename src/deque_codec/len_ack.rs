@@ -1,71 +1,81 @@
 use std::io::{Read, Write};
 
-use crate::{buffer::Owned, Ack, Decode, Encode, Error, Header, Kind, PartialDecode};
+use crate::{
+    buffer::Owned, Ack, Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, Response,
+    Shared,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub struct LenAck {
+pub struct LenAck<S>
+where
+    S: Shared,
+{
     pub(crate) header: Header,
-    pub(crate) response_code: u8,
+    pub(crate) response: Response<S>,
     pub(crate) len: u64,
 }
 
-impl<R, O> PartialDecode<R, O> for LenAck
+impl<R, O> PartialDecode<R, O> for LenAck<O::Shared>
 where
     R: Read,
     O: Owned,
 {
-    fn decode(header: Header, reader: &mut R, _: &mut O) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
         assert_eq!(header.kind, Kind::LenAck);
 
-        let response_code = u8::decode(reader)?;
+        let response = Response::decode_owned(reader, buffer)?;
         let len = u64::decode(reader)?;
 
         Ok(Self {
             header,
-            response_code,
+            response,
             len,
         })
     }
 }
 
-impl<W> Encode<W> for LenAck
+impl<W, S> Encode<W> for LenAck<S>
 where
+    S: Shared,
     W: Write,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
-        self.response_code.encode(writer)?;
+        self.response.encode(writer)?;
         self.len.encode(writer)?;
 
         Ok(())
     }
 }
 
-impl Ack for LenAck {
+impl<S> Ack<S> for LenAck<S>
+where
+    S: Shared,
+{
     fn header(&self) -> &Header {
         &self.header
     }
 
-    fn response_code(&self) -> u8 {
-        self.response_code
+    fn response(&self) -> Response<S> {
+        self.response.clone()
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::verify_encode_decode, Header, Kind, Packet, SUCCESS};
+    use crate::{tests::verify_encode_decode, Header, Kind, Packet, Response, SharedImpl};
 
     use super::LenAck;
 
-    impl LenAck {
-        pub fn new(response_code: u8, len: u64) -> Self {
+    impl LenAck<SharedImpl> {
+        pub fn new(response: Response<SharedImpl>, len: u64) -> Self {
             Self {
                 header: Header::new(Kind::LenAck, 1, 1, 0),
-                response_code,
+                response,
                 len,
             }
         }
@@ -73,6 +83,6 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::LenAck(LenAck::new(SUCCESS, 123)));
+        verify_encode_decode(Packet::LenAck(LenAck::new(Response::success(), 123)));
     }
 }

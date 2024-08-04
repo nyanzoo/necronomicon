@@ -119,7 +119,7 @@ where
         let len = usize::decode(reader)?;
         let uuid = Uuid::decode(reader)?;
 
-        Ok(Header {
+        Ok(Self {
             kind,
             version,
             len,

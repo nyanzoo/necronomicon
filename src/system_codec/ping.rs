@@ -1,23 +1,34 @@
-use std::io::{Read, Write};
+use std::{
+    io::{Read, Write},
+    marker::PhantomData,
+};
 
 use crate::{
     buffer::Owned,
     header::{Uuid, Version},
-    Encode, Error, Header, Kind, PartialDecode,
+    Encode, Error, Header, Kind, PartialDecode, Shared,
 };
 
 use super::PingAck;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub struct Ping {
+pub struct Ping<S>
+where
+    S: Shared,
+{
     pub(crate) header: Header,
+    _phantom: PhantomData<S>,
 }
 
-impl Ping {
+impl<S> Ping<S>
+where
+    S: Shared,
+{
     pub fn new(version: impl Into<Version>, uuid: impl Into<Uuid>) -> Self {
         Self {
             header: Header::new(Kind::Ping, version, uuid, 0),
+            _phantom: PhantomData,
         }
     }
 
@@ -25,14 +36,15 @@ impl Ping {
         self.header
     }
 
-    pub fn ack(self) -> PingAck {
+    pub fn ack(self) -> PingAck<S> {
         PingAck {
             header: Header::new(Kind::PingAck, self.header.version, self.header.uuid, 0),
+            _phantom: PhantomData,
         }
     }
 }
 
-impl<R, O> PartialDecode<R, O> for Ping
+impl<R, O> PartialDecode<R, O> for Ping<O::Shared>
 where
     R: Read,
     O: Owned,
@@ -43,12 +55,16 @@ where
     {
         assert_eq!(header.kind, Kind::Ping);
 
-        Ok(Self { header })
+        Ok(Self {
+            header,
+            _phantom: PhantomData,
+        })
     }
 }
 
-impl<W> Encode<W> for Ping
+impl<W, S> Encode<W> for Ping<S>
 where
+    S: Shared,
     W: Write,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
@@ -60,16 +76,16 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::verify_encode_decode, Ack, Packet, SUCCESS};
+    use crate::{tests::verify_encode_decode, Ack, Packet, SharedImpl, SUCCESS};
 
     use super::Ping;
 
     #[test]
     fn test_ack() {
-        let ping = Ping::new(1, 2);
+        let ping = Ping::<SharedImpl>::new(1, 2);
         let ping_ack = ping.ack();
 
-        assert_eq!(ping_ack.response_code(), SUCCESS);
+        assert_eq!(ping_ack.response().code(), SUCCESS);
     }
 
     #[test]

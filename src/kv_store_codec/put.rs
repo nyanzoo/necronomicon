@@ -3,9 +3,9 @@ use std::io::{Read, Write};
 use log::trace;
 
 use crate::{
-    buffer::{BinaryData, Owned, Shared},
+    buffer::{BinaryData, ByteStr, Owned, Shared},
     header::{Uuid, Version},
-    DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    DecodeOwned, Encode, Error, Header, Kind, PartialDecode, Response,
 };
 
 use super::PutAck;
@@ -50,17 +50,17 @@ where
         &self.value
     }
 
-    pub fn ack(self) -> PutAck {
+    pub fn ack(self) -> PutAck<S> {
         PutAck {
             header: Header::new(Kind::PutAck, self.header.version, self.header.uuid, 0),
-            response_code: SUCCESS,
+            response: Response::success(),
         }
     }
 
-    pub fn nack(self, response_code: u8) -> PutAck {
+    pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> PutAck<S> {
         PutAck {
             header: Header::new(Kind::PutAck, self.header.version, self.header.uuid, 0),
-            response_code,
+            response: Response::fail(response_code, reason),
         }
     }
 }
@@ -102,7 +102,11 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        buffer::binary_data, kv_store_codec::test_key, tests::verify_encode_decode, Ack, Packet,
+        buffer::binary_data,
+        codes::{INTERNAL_ERROR, SUCCESS},
+        kv_store_codec::test_key,
+        tests::verify_encode_decode,
+        Ack, Packet,
     };
 
     use super::Put;
@@ -112,10 +116,10 @@ mod test {
         let put = Put::new(0, 0, test_key(), binary_data(&[1, 2, 3]));
 
         let ack = put.clone().ack();
-        assert_eq!(ack.response_code(), crate::SUCCESS);
+        assert_eq!(ack.response().code(), SUCCESS);
 
-        let nack = put.nack(crate::INTERNAL_ERROR);
-        assert_eq!(nack.response_code(), crate::INTERNAL_ERROR);
+        let nack = put.nack(INTERNAL_ERROR, None);
+        assert_eq!(nack.response().code(), INTERNAL_ERROR);
     }
 
     #[test]

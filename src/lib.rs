@@ -36,6 +36,9 @@ pub use kind::Kind;
 pub mod kv_store_codec;
 use kv_store_codec::{Delete, DeleteAck, Get, GetAck, Put, PutAck};
 
+pub mod response;
+pub use response::Response;
+
 pub mod system_codec;
 use system_codec::{Join, JoinAck, Ping, PingAck, Report, ReportAck, Transfer, TransferAck};
 
@@ -46,35 +49,35 @@ where
 {
     // deque
     Enqueue(Enqueue<S>),
-    EnqueueAck(EnqueueAck),
+    EnqueueAck(EnqueueAck<S>),
     Dequeue(Dequeue<S>),
     DequeueAck(DequeueAck<S>),
     Peek(Peek<S>),
     PeekAck(PeekAck<S>),
     Len(Len<S>),
-    LenAck(LenAck),
+    LenAck(LenAck<S>),
     CreateQueue(Create<S>),
-    CreateQueueAck(CreateAck),
+    CreateQueueAck(CreateAck<S>),
     DeleteQueue(DeleteQueue<S>),
-    DeleteQueueAck(DeleteQueueAck),
+    DeleteQueueAck(DeleteQueueAck<S>),
 
     // kv store
     Put(Put<S>),
-    PutAck(PutAck),
+    PutAck(PutAck<S>),
     Get(Get<S>),
     GetAck(GetAck<S>),
     Delete(Delete<S>),
-    DeleteAck(DeleteAck),
+    DeleteAck(DeleteAck<S>),
 
     // internal system messages
     Report(Report<S>),
-    ReportAck(ReportAck),
+    ReportAck(ReportAck<S>),
     Join(Join<S>),
-    JoinAck(JoinAck),
+    JoinAck(JoinAck<S>),
     Transfer(Transfer<S>),
-    TransferAck(TransferAck),
-    Ping(Ping),
-    PingAck(PingAck),
+    TransferAck(TransferAck<S>),
+    Ping(Ping<S>),
+    PingAck(PingAck<S>),
 }
 
 impl<S> Packet<S>
@@ -117,25 +120,29 @@ where
         }
     }
 
-    pub fn nack(self, response_code: u8) -> Option<Self> {
+    pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> Option<Self> {
         match self {
             // deque
-            Packet::Enqueue(this) => Some(Packet::EnqueueAck(this.nack(response_code))),
-            Packet::Dequeue(this) => Some(Packet::DequeueAck(this.nack(response_code))),
-            Packet::Peek(this) => Some(Packet::PeekAck(this.nack(response_code))),
-            Packet::Len(this) => Some(Packet::LenAck(this.nack(response_code))),
-            Packet::CreateQueue(this) => Some(Packet::CreateQueueAck(this.nack(response_code))),
-            Packet::DeleteQueue(this) => Some(Packet::DeleteQueueAck(this.nack(response_code))),
+            Packet::Enqueue(this) => Some(Packet::EnqueueAck(this.nack(response_code, reason))),
+            Packet::Dequeue(this) => Some(Packet::DequeueAck(this.nack(response_code, reason))),
+            Packet::Peek(this) => Some(Packet::PeekAck(this.nack(response_code, reason))),
+            Packet::Len(this) => Some(Packet::LenAck(this.nack(response_code, reason))),
+            Packet::CreateQueue(this) => {
+                Some(Packet::CreateQueueAck(this.nack(response_code, reason)))
+            }
+            Packet::DeleteQueue(this) => {
+                Some(Packet::DeleteQueueAck(this.nack(response_code, reason)))
+            }
 
             // kv store
-            Packet::Put(this) => Some(Packet::PutAck(this.nack(response_code))),
-            Packet::Get(this) => Some(Packet::GetAck(this.nack(response_code))),
-            Packet::Delete(this) => Some(Packet::DeleteAck(this.nack(response_code))),
+            Packet::Put(this) => Some(Packet::PutAck(this.nack(response_code, reason))),
+            Packet::Get(this) => Some(Packet::GetAck(this.nack(response_code, reason))),
+            Packet::Delete(this) => Some(Packet::DeleteAck(this.nack(response_code, reason))),
 
             // internal system messages
-            Packet::Report(this) => Some(Packet::ReportAck(this.nack(response_code))),
-            Packet::Join(this) => Some(Packet::JoinAck(this.nack(response_code))),
-            Packet::Transfer(this) => Some(Packet::TransferAck(this.nack(response_code))),
+            Packet::Report(this) => Some(Packet::ReportAck(this.nack(response_code, reason))),
+            Packet::Join(this) => Some(Packet::JoinAck(this.nack(response_code, reason))),
+            Packet::Transfer(this) => Some(Packet::TransferAck(this.nack(response_code, reason))),
 
             // acks
             _ => None,
@@ -143,10 +150,13 @@ where
     }
 }
 
-pub trait Ack {
+pub trait Ack<S>
+where
+    S: Shared,
+{
     fn header(&self) -> &Header;
 
-    fn response_code(&self) -> u8;
+    fn response(&self) -> Response<S>;
 }
 
 /// # Description
@@ -608,7 +618,7 @@ pub(crate) mod tests {
         full_decode,
         kv_store_codec::test_key,
         system_codec::*,
-        DecodeOwned, Packet, SUCCESS,
+        DecodeOwned, Packet, Response,
     };
 
     use super::{Decode, Encode};
@@ -679,17 +689,20 @@ pub(crate) mod tests {
                 byte_str(b"hello"),
                 binary_data(&[1, 2, 3]),
             )),
-            Packet::EnqueueAck(crate::deque_codec::EnqueueAck::new(SUCCESS)),
+            Packet::EnqueueAck(crate::deque_codec::EnqueueAck::new(Response::success())),
             Packet::Dequeue(crate::deque_codec::Dequeue::new(
                 123,
                 456,
                 byte_str(b"test"),
             )),
-            Packet::DequeueAck(crate::deque_codec::DequeueAck::new(SUCCESS, None)),
-            Packet::Peek(crate::deque_codec::Peek::new(1, 1, byte_str(b"test"))),
-            Packet::PeekAck(crate::deque_codec::PeekAck::new(SUCCESS, None)),
+            Packet::DequeueAck(crate::deque_codec::DequeueAck::new(
+                Response::success(),
+                None,
+            )),
+            Packet::Peek(crate::deque_codec::Peek::new(1, 1, byte_str(b"test"), 0)),
+            Packet::PeekAck(crate::deque_codec::PeekAck::new(Response::success(), None)),
             Packet::Len(crate::deque_codec::Len::new(1, 1, byte_str(b"test"))),
-            Packet::LenAck(crate::deque_codec::LenAck::new(SUCCESS, 1)),
+            Packet::LenAck(crate::deque_codec::LenAck::new(Response::success(), 1)),
             Packet::CreateQueue(crate::deque_codec::Create::new(
                 1,
                 1,
@@ -697,23 +710,23 @@ pub(crate) mod tests {
                 123,
                 1024,
             )),
-            Packet::CreateQueueAck(crate::deque_codec::CreateAck::new(SUCCESS)),
+            Packet::CreateQueueAck(crate::deque_codec::CreateAck::new(Response::success())),
             Packet::DeleteQueue(crate::deque_codec::Delete::new(1, 1, byte_str(b"test"))),
-            Packet::DeleteQueueAck(crate::deque_codec::DeleteAck::new(SUCCESS)),
+            Packet::DeleteQueueAck(crate::deque_codec::DeleteAck::new(Response::success())),
             Packet::Put(crate::kv_store_codec::Put::new(
                 1,
                 1,
                 test_key(),
                 binary_data(&[1, 2, 3]),
             )),
-            Packet::PutAck(crate::kv_store_codec::PutAck::new(SUCCESS)),
+            Packet::PutAck(crate::kv_store_codec::PutAck::new(Response::success())),
             Packet::Get(crate::kv_store_codec::Get::new(123, 456, test_key())),
             Packet::GetAck(crate::kv_store_codec::GetAck::new(
-                SUCCESS,
+                Response::success(),
                 Some(binary_data(&[1, 2, 3])),
             )),
             Packet::Delete(crate::kv_store_codec::Delete::new(123, 456, test_key())),
-            Packet::DeleteAck(crate::kv_store_codec::DeleteAck::new(SUCCESS)),
+            Packet::DeleteAck(crate::kv_store_codec::DeleteAck::new(Response::success())),
             Packet::Report(Report::new(
                 123,
                 456,
@@ -721,7 +734,7 @@ pub(crate) mod tests {
                     next: byte_str(b"next"),
                 },
             )),
-            Packet::ReportAck(ReportAck::new(SUCCESS)),
+            Packet::ReportAck(ReportAck::new(Response::success())),
             Packet::Join(Join::new(
                 123,
                 456,
@@ -729,7 +742,7 @@ pub(crate) mod tests {
                 1,
                 false,
             )),
-            Packet::JoinAck(JoinAck::new_test(SUCCESS)),
+            Packet::JoinAck(JoinAck::new(Response::success(), 1)),
             Packet::Transfer(Transfer::new(
                 123,
                 456,
@@ -737,7 +750,7 @@ pub(crate) mod tests {
                 42,
                 binary_data(&[1, 2, 3]),
             )),
-            Packet::TransferAck(TransferAck::new(SUCCESS)),
+            Packet::TransferAck(TransferAck::new(Response::success())),
         ]
     }
 }

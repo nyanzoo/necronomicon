@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{ByteStr, Owned, Shared},
     header::{Uuid, Version},
-    Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, Response,
 };
 
 use super::CreateAck;
@@ -55,7 +55,7 @@ where
         self.max_disk_usage
     }
 
-    pub fn ack(self) -> CreateAck {
+    pub fn ack(self) -> CreateAck<S> {
         CreateAck {
             header: Header::new(
                 Kind::CreateQueueAck,
@@ -63,11 +63,11 @@ where
                 self.header.uuid,
                 0,
             ),
-            response_code: SUCCESS,
+            response: Response::success(),
         }
     }
 
-    pub fn nack(self, response_code: u8) -> CreateAck {
+    pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> CreateAck<S> {
         CreateAck {
             header: Header::new(
                 Kind::CreateQueueAck,
@@ -75,7 +75,7 @@ where
                 self.header.uuid,
                 0,
             ),
-            response_code,
+            response: Response::fail(response_code, reason),
         }
     }
 }
@@ -142,10 +142,10 @@ mod test {
         let create = Create::new(0, 1, byte_str(b"test"), 1024, 1024 * 1024);
 
         let ack = create.clone().ack();
-        assert_eq!(ack.response_code(), SUCCESS);
+        assert_eq!(ack.response().code(), SUCCESS);
 
-        let nack = create.nack(INTERNAL_ERROR);
-        assert_eq!(nack.response_code(), INTERNAL_ERROR);
+        let nack = create.nack(INTERNAL_ERROR, None);
+        assert_eq!(nack.response().code(), INTERNAL_ERROR);
     }
 
     #[test]

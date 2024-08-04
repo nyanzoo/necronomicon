@@ -1,73 +1,79 @@
 use std::io::{Read, Write};
 
-use crate::{buffer::Owned, Decode, Encode, Error, Header, Kind, PartialDecode};
+use crate::{
+    buffer::Owned, Ack, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, Response, Shared,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub struct EnqueueAck {
+pub struct EnqueueAck<S>
+where
+    S: Shared,
+{
     pub(crate) header: Header,
-    pub(crate) response_code: u8,
+    pub(crate) response: Response<S>,
 }
 
-impl<R, O> PartialDecode<R, O> for EnqueueAck
+impl<R, O> PartialDecode<R, O> for EnqueueAck<O::Shared>
 where
     R: Read,
     O: Owned,
 {
-    fn decode(header: Header, reader: &mut R, _: &mut O) -> Result<Self, Error>
+    fn decode(header: Header, reader: &mut R, buffer: &mut O) -> Result<Self, Error>
     where
         Self: Sized,
     {
         assert_eq!(header.kind, Kind::EnqueueAck);
 
-        let response_code = u8::decode(reader)?;
+        let response = Response::decode_owned(reader, buffer)?;
 
-        Ok(Self {
-            header,
-            response_code,
-        })
+        Ok(Self { header, response })
     }
 }
 
-impl<W> Encode<W> for EnqueueAck
+impl<W, S> Encode<W> for EnqueueAck<S>
 where
+    S: Shared,
     W: Write,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
-        self.response_code.encode(writer)?;
+        self.response.encode(writer)?;
 
         Ok(())
     }
 }
 
-impl crate::Ack for EnqueueAck {
+impl<S> Ack<S> for EnqueueAck<S>
+where
+    S: Shared,
+{
     fn header(&self) -> &Header {
         &self.header
     }
 
-    fn response_code(&self) -> u8 {
-        self.response_code
+    fn response(&self) -> Response<S> {
+        self.response.clone()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{tests::verify_encode_decode, Header, Kind, Packet, SUCCESS};
+    use crate::{tests::verify_encode_decode, Header, Kind, Packet, Response, SharedImpl};
 
     use super::EnqueueAck;
 
-    impl EnqueueAck {
-        pub fn new(response_code: u8) -> Self {
+    impl EnqueueAck<SharedImpl> {
+        pub fn new(response: Response<SharedImpl>) -> Self {
             Self {
                 header: Header::new(Kind::EnqueueAck, 1, 1, 0),
-                response_code,
+                response,
             }
         }
     }
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::EnqueueAck(EnqueueAck::new(SUCCESS)));
+        verify_encode_decode(Packet::EnqueueAck(EnqueueAck::new(Response::success())));
     }
 }

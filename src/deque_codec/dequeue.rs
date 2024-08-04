@@ -3,7 +3,8 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{BinaryData, ByteStr, Owned, Shared},
     header::{Uuid, Version},
-    DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    response::Response,
+    DecodeOwned, Encode, Error, Header, Kind, PartialDecode,
 };
 
 use super::DequeueAck;
@@ -48,15 +49,15 @@ where
                 self.header.uuid,
                 value.len(),
             ),
-            response_code: SUCCESS,
+            response: Response::success(),
             value: Some(value),
         }
     }
 
-    pub fn nack(self, response_code: u8) -> DequeueAck<S> {
+    pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> DequeueAck<S> {
         DequeueAck {
             header: Header::new(Kind::DequeAck, self.header.version, self.header.uuid, 0),
-            response_code,
+            response: Response::fail(response_code, reason),
             value: None,
         }
     }
@@ -107,10 +108,10 @@ mod test {
         let deque = Dequeue::new(1, 2, byte_str(b"test"));
 
         let ack = deque.clone().ack(binary_data(&[1, 2, 3]));
-        assert_eq!(ack.response_code(), SUCCESS);
+        assert_eq!(ack.response().code(), SUCCESS);
 
-        let nack = deque.nack(INTERNAL_ERROR);
-        assert_eq!(nack.response_code(), INTERNAL_ERROR);
+        let nack = deque.nack(INTERNAL_ERROR, None);
+        assert_eq!(nack.response().code(), INTERNAL_ERROR);
     }
 
     #[test]

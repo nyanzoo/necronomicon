@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{Owned, Shared},
     header::{Uuid, Version},
-    DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    ByteStr, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, Response,
 };
 
 use super::{Position, ReportAck};
@@ -37,17 +37,17 @@ where
         &self.position
     }
 
-    pub fn ack(self) -> ReportAck {
+    pub fn ack(self) -> ReportAck<S> {
         ReportAck {
             header: Header::new(Kind::ReportAck, self.header.version, self.header.uuid, 0),
-            response_code: SUCCESS,
+            response: Response::success(),
         }
     }
 
-    pub fn nack(self, response_code: u8) -> ReportAck {
+    pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> ReportAck<S> {
         ReportAck {
             header: Header::new(Kind::ReportAck, self.header.version, self.header.uuid, 0),
-            response_code,
+            response: Response::fail(response_code, reason),
         }
     }
 }
@@ -102,10 +102,10 @@ mod test {
         );
 
         let report_ack = report.clone().ack();
-        assert_eq!(report_ack.response_code(), SUCCESS);
+        assert_eq!(report_ack.response().code(), SUCCESS);
 
-        let report_nack = report.nack(INTERNAL_ERROR);
-        assert_eq!(report_nack.response_code(), INTERNAL_ERROR);
+        let report_nack = report.nack(INTERNAL_ERROR, None);
+        assert_eq!(report_nack.response().code(), INTERNAL_ERROR);
     }
 
     #[test]
