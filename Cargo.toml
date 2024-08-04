@@ -17,4 +17,10 @@ test-case = "3"
 
 [features]
 default = []
+timeout = []
 test = []
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+    'cfg(coverage,coverage_nightly)',
+] }

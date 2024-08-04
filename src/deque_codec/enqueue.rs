@@ -3,7 +3,8 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{BinaryData, ByteStr, Owned, Shared},
     header::{Uuid, Version},
-    DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    response::Response,
+    DecodeOwned, Encode, Error, Header, Kind, PartialDecode,
 };
 
 use super::EnqueueAck;
@@ -48,17 +49,17 @@ where
         &self.value
     }
 
-    pub fn ack(self) -> EnqueueAck {
+    pub fn ack(self) -> EnqueueAck<S> {
         EnqueueAck {
             header: Header::new(Kind::EnqueueAck, self.header.version, self.header.uuid, 0),
-            response_code: SUCCESS,
+            response: Response::success(),
         }
     }
 
-    pub fn nack(self, response_code: u8) -> EnqueueAck {
+    pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> EnqueueAck<S> {
         EnqueueAck {
             header: Header::new(Kind::EnqueueAck, self.header.version, self.header.uuid, 0),
-            response_code,
+            response: Response::fail(response_code, reason),
         }
     }
 }
@@ -110,18 +111,18 @@ mod test {
     use super::Enqueue;
 
     #[test]
-    fn test_acks() {
+    fn acks() {
         let enqueue = Enqueue::new(0, 0, byte_str(b"test"), binary_data(&[1, 2, 3]));
 
         let ack = enqueue.clone().ack();
-        assert_eq!(ack.response_code(), SUCCESS);
+        assert_eq!(ack.response().code(), SUCCESS);
 
-        let nack = enqueue.nack(INTERNAL_ERROR);
-        assert_eq!(nack.response_code(), INTERNAL_ERROR);
+        let nack = enqueue.nack(INTERNAL_ERROR, None);
+        assert_eq!(nack.response().code(), INTERNAL_ERROR);
     }
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::Enqueue(Enqueue::new(
             1,
             1,

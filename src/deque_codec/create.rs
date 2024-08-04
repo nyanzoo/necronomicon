@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{ByteStr, Owned, Shared},
     header::{Uuid, Version},
-    Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, Response,
 };
 
 use super::CreateAck;
@@ -17,6 +17,7 @@ where
     pub(crate) header: Header,
     pub(crate) path: ByteStr<S>,
     pub(crate) node_size: u64,
+    pub(crate) max_disk_usage: u64,
 }
 
 impl<S> Create<S>
@@ -28,11 +29,13 @@ where
         uuid: impl Into<Uuid>,
         path: ByteStr<S>,
         node_size: u64,
+        max_disk_usage: u64,
     ) -> Self {
         Self {
             header: Header::new(Kind::CreateQueue, version, uuid, path.len()),
             path,
             node_size,
+            max_disk_usage,
         }
     }
 
@@ -48,7 +51,11 @@ where
         self.node_size
     }
 
-    pub fn ack(self) -> CreateAck {
+    pub fn max_disk_usage(&self) -> u64 {
+        self.max_disk_usage
+    }
+
+    pub fn ack(self) -> CreateAck<S> {
         CreateAck {
             header: Header::new(
                 Kind::CreateQueueAck,
@@ -56,11 +63,11 @@ where
                 self.header.uuid,
                 0,
             ),
-            response_code: SUCCESS,
+            response: Response::success(),
         }
     }
 
-    pub fn nack(self, response_code: u8) -> CreateAck {
+    pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> CreateAck<S> {
         CreateAck {
             header: Header::new(
                 Kind::CreateQueueAck,
@@ -68,7 +75,7 @@ where
                 self.header.uuid,
                 0,
             ),
-            response_code,
+            response: Response::fail(response_code, reason),
         }
     }
 }
@@ -86,11 +93,13 @@ where
 
         let path = ByteStr::decode_owned(reader, buffer)?;
         let node_size = u64::decode(reader)?;
+        let max_disk_usage = u64::decode(reader)?;
 
         Ok(Self {
             header,
             path,
             node_size,
+            max_disk_usage,
         })
     }
 }
@@ -104,6 +113,7 @@ where
         self.header.encode(writer)?;
         self.path.encode(writer)?;
         self.node_size.encode(writer)?;
+        self.max_disk_usage.encode(writer)?;
 
         Ok(())
     }
@@ -119,7 +129,7 @@ mod test {
 
     #[test]
     fn test_new() {
-        let create = Create::new(0, 1, byte_str(b"test"), 1024);
+        let create = Create::new(0, 1, byte_str(b"test"), 1024, 1024 * 1024);
 
         assert_eq!(create.header().version, 0.into());
         assert_eq!(create.header().uuid, 1.into());
@@ -128,23 +138,24 @@ mod test {
     }
 
     #[test]
-    fn test_acks() {
-        let create = Create::new(0, 1, byte_str(b"test"), 1024);
+    fn acks() {
+        let create = Create::new(0, 1, byte_str(b"test"), 1024, 1024 * 1024);
 
         let ack = create.clone().ack();
-        assert_eq!(ack.response_code(), SUCCESS);
+        assert_eq!(ack.response().code(), SUCCESS);
 
-        let nack = create.nack(INTERNAL_ERROR);
-        assert_eq!(nack.response_code(), INTERNAL_ERROR);
+        let nack = create.nack(INTERNAL_ERROR, None);
+        assert_eq!(nack.response().code(), INTERNAL_ERROR);
     }
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::CreateQueue(Create::new(
             0,
             1,
             byte_str(b"test"),
             1024,
+            1024 * 1024,
         )));
     }
 }

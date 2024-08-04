@@ -7,7 +7,7 @@ use crate::{DecodeOwned, Encode, Error};
 
 use super::{BinaryData, Owned, Shared};
 
-#[derive(Clone, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct ByteStr<S>(BinaryData<S>)
 where
     S: Shared;
@@ -86,5 +86,25 @@ where
         self.0.encode(writer)?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{Pool, PoolImpl};
+
+    use super::*;
+
+    #[test]
+    fn byte_str() {
+        let pool = PoolImpl::new(1024, 1024);
+        let mut buffer = pool.acquire("test");
+        let data = "hello world";
+        let byte_str = ByteStr::from_owned(data, &mut buffer).expect("byte_str");
+
+        assert_eq!(byte_str.len(), data.len());
+        assert_eq!(byte_str.is_empty(), false);
+        assert_eq!(byte_str.as_str().expect("str"), data);
+        assert_eq!(byte_str.data().as_slice(), b"hello world");
     }
 }

@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{ByteStr, Owned, Shared},
     header::{Uuid, Version},
-    DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    DecodeOwned, Encode, Error, Header, Kind, PartialDecode, Response,
 };
 
 use super::LenAck;
@@ -37,19 +37,19 @@ where
         &self.path
     }
 
-    pub fn ack(self, len: u64) -> LenAck {
+    pub fn ack(self, len: u64) -> LenAck<S> {
         LenAck {
             header: Header::new(Kind::LenAck, self.header.version, self.header.uuid, 0),
             len,
-            response_code: SUCCESS,
+            response: Response::success(),
         }
     }
 
-    pub fn nack(self, response_code: u8) -> LenAck {
+    pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> LenAck<S> {
         LenAck {
             header: Header::new(Kind::LenAck, self.header.version, self.header.uuid, 0),
             len: 0,
-            response_code,
+            response: Response::fail(response_code, reason),
         }
     }
 }
@@ -103,18 +103,18 @@ mod test {
     }
 
     #[test]
-    fn test_acks() {
+    fn acks() {
         let len = Len::new(0, 1, byte_str(b"test"));
 
         let ack = len.clone().ack(1);
-        assert_eq!(ack.response_code(), SUCCESS);
+        assert_eq!(ack.response().code(), SUCCESS);
 
-        let nack = len.nack(INTERNAL_ERROR);
-        assert_eq!(nack.response_code(), INTERNAL_ERROR);
+        let nack = len.nack(INTERNAL_ERROR, None);
+        assert_eq!(nack.response().code(), INTERNAL_ERROR);
     }
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::Len(Len::new(0, 1, byte_str(b"test"))));
     }
 }

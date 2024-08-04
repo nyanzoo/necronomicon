@@ -3,19 +3,19 @@ use std::{
     io::{Read, Write},
 };
 
-use crate::{dequeue_codec, kv_store_codec, system_codec, Decode, Encode, Error};
+use crate::{deque_codec, kv_store_codec, system_codec, Decode, Encode, Error};
 
 // TODO: need to map these to packet types, also need to do partial
 // decodes of header to get packet type and then decode the rest.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
-    // dequeue messages
+    // deque messages
     // make sure to keep these in sync with the ones in
-    // necronomicon/src/dequeue_codec/mod.rs
-    Enqueue = dequeue_codec::START as isize,
+    // necronomicon/src/deque_codec/mod.rs
+    Enqueue = deque_codec::START as isize,
     EnqueueAck,
-    Dequeue,
-    DequeueAck,
+    Deque,
+    DequeAck,
     Peek,
     PeekAck,
     Len,
@@ -23,7 +23,7 @@ pub enum Kind {
     CreateQueue,
     CreateQueueAck,
     DeleteQueue,
-    DeleteQueueAck = dequeue_codec::END as isize,
+    DeleteQueueAck = deque_codec::END as isize,
 
     // kv store messages
     // make sure to keep these in sync with the ones in
@@ -49,11 +49,11 @@ pub enum Kind {
 impl Debug for Kind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let res = match self {
-            // dequeue messages
+            // deque messages
             Self::Enqueue => write!(f, "Enqueue"),
             Self::EnqueueAck => write!(f, "EnqueueAck"),
-            Self::Dequeue => write!(f, "Dequeue"),
-            Self::DequeueAck => write!(f, "DequeueAck"),
+            Self::Deque => write!(f, "Deque"),
+            Self::DequeAck => write!(f, "DequeAck"),
             Self::Peek => write!(f, "Peek"),
             Self::PeekAck => write!(f, "PeekAck"),
             Self::Len => write!(f, "Len"),
@@ -109,19 +109,19 @@ where
 impl From<u8> for Kind {
     fn from(value: u8) -> Self {
         match value {
-            // dequeue messages
-            dequeue_codec::ENQUEUE => Kind::Enqueue,
-            dequeue_codec::ENQUEUE_ACK => Kind::EnqueueAck,
-            dequeue_codec::DEQUEUE => Kind::Dequeue,
-            dequeue_codec::DEQUEUE_ACK => Kind::DequeueAck,
-            dequeue_codec::PEEK => Kind::Peek,
-            dequeue_codec::PEEK_ACK => Kind::PeekAck,
-            dequeue_codec::LEN => Kind::Len,
-            dequeue_codec::LEN_ACK => Kind::LenAck,
-            dequeue_codec::CREATE => Kind::CreateQueue,
-            dequeue_codec::CREATE_ACK => Kind::CreateQueueAck,
-            dequeue_codec::DELETE => Kind::DeleteQueue,
-            dequeue_codec::DELETE_ACK => Kind::DeleteQueueAck,
+            // deque messages
+            deque_codec::ENQUEUE => Kind::Enqueue,
+            deque_codec::ENQUEUE_ACK => Kind::EnqueueAck,
+            deque_codec::DEQUEUE => Kind::Deque,
+            deque_codec::DEQUEUE_ACK => Kind::DequeAck,
+            deque_codec::PEEK => Kind::Peek,
+            deque_codec::PEEK_ACK => Kind::PeekAck,
+            deque_codec::LEN => Kind::Len,
+            deque_codec::LEN_ACK => Kind::LenAck,
+            deque_codec::CREATE => Kind::CreateQueue,
+            deque_codec::CREATE_ACK => Kind::CreateQueueAck,
+            deque_codec::DELETE => Kind::DeleteQueue,
+            deque_codec::DELETE_ACK => Kind::DeleteQueueAck,
 
             // kv store messages
             kv_store_codec::PUT => Kind::Put,
@@ -149,19 +149,19 @@ impl From<u8> for Kind {
 impl From<Kind> for u8 {
     fn from(value: Kind) -> Self {
         match value {
-            // dequeue messages
-            Kind::Enqueue => dequeue_codec::ENQUEUE,
-            Kind::EnqueueAck => dequeue_codec::ENQUEUE_ACK,
-            Kind::Dequeue => dequeue_codec::DEQUEUE,
-            Kind::DequeueAck => dequeue_codec::DEQUEUE_ACK,
-            Kind::Peek => dequeue_codec::PEEK,
-            Kind::PeekAck => dequeue_codec::PEEK_ACK,
-            Kind::Len => dequeue_codec::LEN,
-            Kind::LenAck => dequeue_codec::LEN_ACK,
-            Kind::CreateQueue => dequeue_codec::CREATE,
-            Kind::CreateQueueAck => dequeue_codec::CREATE_ACK,
-            Kind::DeleteQueue => dequeue_codec::DELETE,
-            Kind::DeleteQueueAck => dequeue_codec::DELETE_ACK,
+            // deque messages
+            Kind::Enqueue => deque_codec::ENQUEUE,
+            Kind::EnqueueAck => deque_codec::ENQUEUE_ACK,
+            Kind::Deque => deque_codec::DEQUEUE,
+            Kind::DequeAck => deque_codec::DEQUEUE_ACK,
+            Kind::Peek => deque_codec::PEEK,
+            Kind::PeekAck => deque_codec::PEEK_ACK,
+            Kind::Len => deque_codec::LEN,
+            Kind::LenAck => deque_codec::LEN_ACK,
+            Kind::CreateQueue => deque_codec::CREATE,
+            Kind::CreateQueueAck => deque_codec::CREATE_ACK,
+            Kind::DeleteQueue => deque_codec::DELETE,
+            Kind::DeleteQueueAck => deque_codec::DELETE_ACK,
 
             // kv store messages
             Kind::Put => kv_store_codec::PUT,

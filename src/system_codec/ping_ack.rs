@@ -1,14 +1,21 @@
-use std::io::{Read, Write};
+use std::{
+    io::{Read, Write},
+    marker::PhantomData,
+};
 
-use crate::{buffer::Owned, Ack, Encode, Error, Header, Kind, PartialDecode, SUCCESS};
+use crate::{buffer::Owned, Ack, Encode, Error, Header, Kind, PartialDecode, Response, Shared};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub struct PingAck {
+pub struct PingAck<S>
+where
+    S: Shared,
+{
     pub(crate) header: Header,
+    pub(crate) _phantom: PhantomData<S>,
 }
 
-impl<R, O> PartialDecode<R, O> for PingAck
+impl<R, O> PartialDecode<R, O> for PingAck<O::Shared>
 where
     R: Read,
     O: Owned,
@@ -19,12 +26,16 @@ where
     {
         assert_eq!(header.kind, Kind::PingAck);
 
-        Ok(Self { header })
+        Ok(Self {
+            header,
+            _phantom: PhantomData,
+        })
     }
 }
 
-impl<W> Encode<W> for PingAck
+impl<W, S> Encode<W> for PingAck<S>
 where
+    S: Shared,
     W: Write,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
@@ -34,32 +45,38 @@ where
     }
 }
 
-impl Ack for PingAck {
+impl<S> Ack<S> for PingAck<S>
+where
+    S: Shared,
+{
     fn header(&self) -> &Header {
         &self.header
     }
 
-    fn response_code(&self) -> u8 {
-        SUCCESS
+    fn response(&self) -> Response<S> {
+        Response::success()
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::verify_encode_decode, Header, Kind, Packet};
+    use std::marker::PhantomData;
+
+    use crate::{tests::verify_encode_decode, Header, Kind, Packet, SharedImpl};
 
     use super::PingAck;
 
-    impl PingAck {
+    impl PingAck<SharedImpl> {
         fn new() -> Self {
             Self {
                 header: Header::new_test_ack(Kind::PingAck),
+                _phantom: PhantomData,
             }
         }
     }
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::PingAck(PingAck::new()));
     }
 }

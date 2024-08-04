@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{BinaryData, ByteStr, Owned, Shared},
     header::{Uuid, Version},
-    Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, Response,
 };
 
 use super::TransferAck;
@@ -55,17 +55,17 @@ where
         &self.content
     }
 
-    pub fn ack(self) -> TransferAck {
+    pub fn ack(self) -> TransferAck<S> {
         TransferAck {
             header: Header::new(Kind::TransferAck, self.header.version, self.header.uuid, 1),
-            response_code: SUCCESS,
+            response: Response::success(),
         }
     }
 
-    pub fn nack(self, response_code: u8) -> TransferAck {
+    pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> TransferAck<S> {
         TransferAck {
             header: Header::new(Kind::TransferAck, self.header.version, self.header.uuid, 1),
-            response_code,
+            response: Response::fail(response_code, reason),
         }
     }
 }
@@ -120,7 +120,7 @@ mod test {
     use super::Transfer;
 
     #[test]
-    fn test_acks() {
+    fn acks() {
         let transfer = Transfer::new(
             1,
             2,
@@ -130,14 +130,14 @@ mod test {
         );
 
         let ack = transfer.clone().ack();
-        assert_eq!(ack.response_code(), SUCCESS);
+        assert_eq!(ack.response().code(), SUCCESS);
 
-        let nack = transfer.nack(INTERNAL_ERROR);
-        assert_eq!(nack.response_code(), INTERNAL_ERROR);
+        let nack = transfer.nack(INTERNAL_ERROR, None);
+        assert_eq!(nack.response().code(), INTERNAL_ERROR);
     }
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::Transfer(Transfer::new(
             1,
             2,

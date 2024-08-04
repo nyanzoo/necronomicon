@@ -3,7 +3,8 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{BinaryData, ByteStr, Owned, Shared},
     header::{Uuid, Version},
-    DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    response::Response,
+    DecodeOwned, Encode, Error, Header, Kind, PartialDecode,
 };
 
 use super::DequeueAck;
@@ -24,7 +25,7 @@ where
 {
     pub fn new(version: impl Into<Version>, uuid: impl Into<Uuid>, path: ByteStr<S>) -> Self {
         Self {
-            header: Header::new(Kind::Dequeue, version, uuid, path.len()),
+            header: Header::new(Kind::Deque, version, uuid, path.len()),
             path,
         }
     }
@@ -43,20 +44,20 @@ where
     {
         DequeueAck {
             header: Header::new(
-                Kind::DequeueAck,
+                Kind::DequeAck,
                 self.header.version,
                 self.header.uuid,
                 value.len(),
             ),
-            response_code: SUCCESS,
+            response: Response::success(),
             value: Some(value),
         }
     }
 
-    pub fn nack(self, response_code: u8) -> DequeueAck<S> {
+    pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> DequeueAck<S> {
         DequeueAck {
-            header: Header::new(Kind::DequeueAck, self.header.version, self.header.uuid, 0),
-            response_code,
+            header: Header::new(Kind::DequeAck, self.header.version, self.header.uuid, 0),
+            response: Response::fail(response_code, reason),
             value: None,
         }
     }
@@ -71,7 +72,7 @@ where
     where
         Self: Sized,
     {
-        assert_eq!(header.kind, Kind::Dequeue);
+        assert_eq!(header.kind, Kind::Deque);
 
         let path = ByteStr::decode_owned(reader, buffer)?;
 
@@ -103,18 +104,18 @@ mod test {
     use super::Dequeue;
 
     #[test]
-    fn test_acks() {
-        let dequeue = Dequeue::new(1, 2, byte_str(b"test"));
+    fn acks() {
+        let deque = Dequeue::new(1, 2, byte_str(b"test"));
 
-        let ack = dequeue.clone().ack(binary_data(&[1, 2, 3]));
-        assert_eq!(ack.response_code(), SUCCESS);
+        let ack = deque.clone().ack(binary_data(&[1, 2, 3]));
+        assert_eq!(ack.response().code(), SUCCESS);
 
-        let nack = dequeue.nack(INTERNAL_ERROR);
-        assert_eq!(nack.response_code(), INTERNAL_ERROR);
+        let nack = deque.nack(INTERNAL_ERROR, None);
+        assert_eq!(nack.response().code(), INTERNAL_ERROR);
     }
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::Dequeue(Dequeue::new(1, 2, byte_str(b"test"))));
     }
 }

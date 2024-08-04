@@ -1,4 +1,4 @@
-#![cfg_attr(nightly, feature(no_coverage))]
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 use std::io::{Read, Write};
 
@@ -7,7 +7,9 @@ use log::{debug, trace};
 mod buffer;
 #[cfg(any(test, feature = "test"))]
 pub use buffer::{binary_data, byte_str};
-pub use buffer::{fill, BinaryData, ByteStr, Owned, OwnedImpl, Pool, PoolImpl, Shared, SharedImpl};
+pub use buffer::{
+    fill, BinaryData, BufferOwner, ByteStr, Owned, OwnedImpl, Pool, PoolImpl, Shared, SharedImpl,
+};
 
 mod codes;
 pub use codes::{
@@ -16,8 +18,8 @@ pub use codes::{
     SERVER_BUSY, SUCCESS,
 };
 
-pub mod dequeue_codec;
-use dequeue_codec::{
+pub mod deque_codec;
+use deque_codec::{
     Create, CreateAck, Delete as DeleteQueue, DeleteAck as DeleteQueueAck, Dequeue, DequeueAck,
     Enqueue, EnqueueAck, Len, LenAck, Peek, PeekAck,
 };
@@ -34,6 +36,9 @@ pub use kind::Kind;
 pub mod kv_store_codec;
 use kv_store_codec::{Delete, DeleteAck, Get, GetAck, Put, PutAck};
 
+pub mod response;
+pub use response::Response;
+
 pub mod system_codec;
 use system_codec::{Join, JoinAck, Ping, PingAck, Report, ReportAck, Transfer, TransferAck};
 
@@ -42,37 +47,37 @@ pub enum Packet<S>
 where
     S: Shared,
 {
-    // dequeue
+    // deque
     Enqueue(Enqueue<S>),
-    EnqueueAck(EnqueueAck),
+    EnqueueAck(EnqueueAck<S>),
     Dequeue(Dequeue<S>),
     DequeueAck(DequeueAck<S>),
     Peek(Peek<S>),
     PeekAck(PeekAck<S>),
     Len(Len<S>),
-    LenAck(LenAck),
+    LenAck(LenAck<S>),
     CreateQueue(Create<S>),
-    CreateQueueAck(CreateAck),
+    CreateQueueAck(CreateAck<S>),
     DeleteQueue(DeleteQueue<S>),
-    DeleteQueueAck(DeleteQueueAck),
+    DeleteQueueAck(DeleteQueueAck<S>),
 
     // kv store
     Put(Put<S>),
-    PutAck(PutAck),
+    PutAck(PutAck<S>),
     Get(Get<S>),
     GetAck(GetAck<S>),
     Delete(Delete<S>),
-    DeleteAck(DeleteAck),
+    DeleteAck(DeleteAck<S>),
 
     // internal system messages
     Report(Report<S>),
-    ReportAck(ReportAck),
+    ReportAck(ReportAck<S>),
     Join(Join<S>),
-    JoinAck(JoinAck),
+    JoinAck(JoinAck<S>),
     Transfer(Transfer<S>),
-    TransferAck(TransferAck),
-    Ping(Ping),
-    PingAck(PingAck),
+    TransferAck(TransferAck<S>),
+    Ping(Ping<S>),
+    PingAck(PingAck<S>),
 }
 
 impl<S> Packet<S>
@@ -81,7 +86,7 @@ where
 {
     pub fn header(&self) -> Header {
         match self {
-            // dequeue
+            // deque
             Packet::Enqueue(packet) => packet.header,
             Packet::EnqueueAck(packet) => packet.header,
             Packet::Dequeue(packet) => packet.header,
@@ -115,25 +120,29 @@ where
         }
     }
 
-    pub fn nack(self, response_code: u8) -> Option<Self> {
+    pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> Option<Self> {
         match self {
-            // dequeue
-            Packet::Enqueue(this) => Some(Packet::EnqueueAck(this.nack(response_code))),
-            Packet::Dequeue(this) => Some(Packet::DequeueAck(this.nack(response_code))),
-            Packet::Peek(this) => Some(Packet::PeekAck(this.nack(response_code))),
-            Packet::Len(this) => Some(Packet::LenAck(this.nack(response_code))),
-            Packet::CreateQueue(this) => Some(Packet::CreateQueueAck(this.nack(response_code))),
-            Packet::DeleteQueue(this) => Some(Packet::DeleteQueueAck(this.nack(response_code))),
+            // deque
+            Packet::Enqueue(this) => Some(Packet::EnqueueAck(this.nack(response_code, reason))),
+            Packet::Dequeue(this) => Some(Packet::DequeueAck(this.nack(response_code, reason))),
+            Packet::Peek(this) => Some(Packet::PeekAck(this.nack(response_code, reason))),
+            Packet::Len(this) => Some(Packet::LenAck(this.nack(response_code, reason))),
+            Packet::CreateQueue(this) => {
+                Some(Packet::CreateQueueAck(this.nack(response_code, reason)))
+            }
+            Packet::DeleteQueue(this) => {
+                Some(Packet::DeleteQueueAck(this.nack(response_code, reason)))
+            }
 
             // kv store
-            Packet::Put(this) => Some(Packet::PutAck(this.nack(response_code))),
-            Packet::Get(this) => Some(Packet::GetAck(this.nack(response_code))),
-            Packet::Delete(this) => Some(Packet::DeleteAck(this.nack(response_code))),
+            Packet::Put(this) => Some(Packet::PutAck(this.nack(response_code, reason))),
+            Packet::Get(this) => Some(Packet::GetAck(this.nack(response_code, reason))),
+            Packet::Delete(this) => Some(Packet::DeleteAck(this.nack(response_code, reason))),
 
             // internal system messages
-            Packet::Report(this) => Some(Packet::ReportAck(this.nack(response_code))),
-            Packet::Join(this) => Some(Packet::JoinAck(this.nack(response_code))),
-            Packet::Transfer(this) => Some(Packet::TransferAck(this.nack(response_code))),
+            Packet::Report(this) => Some(Packet::ReportAck(this.nack(response_code, reason))),
+            Packet::Join(this) => Some(Packet::JoinAck(this.nack(response_code, reason))),
+            Packet::Transfer(this) => Some(Packet::TransferAck(this.nack(response_code, reason))),
 
             // acks
             _ => None,
@@ -141,10 +150,13 @@ where
     }
 }
 
-pub trait Ack {
+pub trait Ack<S>
+where
+    S: Shared,
+{
     fn header(&self) -> &Header;
 
-    fn response_code(&self) -> u8;
+    fn response(&self) -> Response<S>;
 }
 
 /// # Description
@@ -170,11 +182,11 @@ where
 {
     debug!("partial_decode: {:?}", header);
     let packet = match header.kind {
-        // dequeue messages
+        // deque messages
         Kind::Enqueue => Packet::Enqueue(Enqueue::decode(header, reader, buffer)?),
         Kind::EnqueueAck => Packet::EnqueueAck(EnqueueAck::decode(header, reader, buffer)?),
-        Kind::Dequeue => Packet::Dequeue(Dequeue::decode(header, reader, buffer)?),
-        Kind::DequeueAck => Packet::DequeueAck(DequeueAck::decode(header, reader, buffer)?),
+        Kind::Deque => Packet::Dequeue(Dequeue::decode(header, reader, buffer)?),
+        Kind::DequeAck => Packet::DequeueAck(DequeueAck::decode(header, reader, buffer)?),
         Kind::Peek => Packet::Peek(Peek::decode(header, reader, buffer)?),
         Kind::PeekAck => Packet::PeekAck(PeekAck::decode(header, reader, buffer)?),
         Kind::Len => Packet::Len(Len::decode(header, reader, buffer)?),
@@ -217,7 +229,7 @@ where
 /// * `reader` - The reader to decode from.
 /// * `buffer` - The buffer to place the decoded value into.
 /// * `previous_decoded_header` - The previous header that was decoded. This is useful for when
-///  we failed to have enough buffer to decode the full packet. We can use this to try again with a new buffer.
+///   we failed to have enough buffer to decode the full packet. We can use this to try again with a new buffer.
 ///
 /// # Errors
 /// This function will return an error if the data cannot be decoded from the reader along with a previous header if any.
@@ -344,7 +356,7 @@ mod packet {
         fn encode(&self, writer: &mut W) -> Result<(), Error> {
             debug!("encode: {:?}", self);
             match self {
-                // dequeue
+                // deque
                 Packet::Enqueue(packet) => packet.encode(writer),
                 Packet::EnqueueAck(packet) => packet.encode(writer),
                 Packet::Dequeue(packet) => packet.encode(writer),
@@ -586,7 +598,7 @@ pub(crate) mod tests {
         full_decode,
         kv_store_codec::test_key,
         system_codec::*,
-        DecodeOwned, Packet, SUCCESS,
+        DecodeOwned, Packet, Response,
     };
 
     use super::{Decode, Encode};
@@ -597,7 +609,7 @@ pub(crate) mod tests {
         let mut cursor = Cursor::new(bytes);
 
         let pool = PoolImpl::new(1024, 1);
-        let mut buffer = pool.acquire().expect("acquire");
+        let mut buffer = pool.acquire("full decode");
 
         let decoded = full_decode(&mut cursor, &mut buffer, None).unwrap();
         assert_eq!(val, decoded);
@@ -608,15 +620,7 @@ pub(crate) mod tests {
         let packets = test_packets();
 
         for packet in packets {
-            let mut bytes = vec![];
-            packet.encode(&mut bytes).unwrap();
-            let mut cursor = Cursor::new(bytes);
-
-            let pool = PoolImpl::new(1024, 1);
-            let mut buffer = pool.acquire().expect("acquire");
-
-            let decoded = full_decode(&mut cursor, &mut buffer, None).unwrap();
-            assert_eq!(packet, decoded);
+            verify_encode_decode(packet);
         }
     }
 
@@ -627,7 +631,7 @@ pub(crate) mod tests {
     #[test_case::test_case(1usize; "usize")]
     #[test_case::test_case(vec![1, 2, 3]; "vec")]
     #[test_case::test_case(Some(1u8); "option")]
-    fn test_encode_decode<T>(val: T)
+    fn encode_decode<T>(val: T)
     where
         T: Decode<Cursor<Vec<u8>>> + Encode<Vec<u8>> + Debug + PartialEq,
     {
@@ -642,7 +646,7 @@ pub(crate) mod tests {
     #[test_case::test_case(vec![byte_str(b"kittens")]; "vec")]
     #[test_case::test_case(Some(byte_str(b"data")); "option")]
     #[test_case::test_case(vec![Role::Backend(byte_str(b"test")), Role::Observer]; "role")]
-    fn test_encode_decode_owned<T>(val: T)
+    fn encode_decode_owned<T>(val: T)
     where
         T: DecodeOwned<Cursor<Vec<u8>>, OwnedImpl> + Encode<Vec<u8>> + Debug + PartialEq,
     {
@@ -651,7 +655,7 @@ pub(crate) mod tests {
         let mut cursor = Cursor::new(bytes);
 
         let pool = PoolImpl::new(1024, 1);
-        let mut buffer = pool.acquire().expect("acquire");
+        let mut buffer = pool.acquire("decode owned T");
 
         let decoded = T::decode_owned(&mut cursor, &mut buffer).unwrap();
         assert_eq!(val, decoded);
@@ -659,46 +663,50 @@ pub(crate) mod tests {
 
     fn test_packets() -> Vec<Packet<SharedImpl>> {
         vec![
-            Packet::Enqueue(crate::dequeue_codec::Enqueue::new(
+            Packet::Enqueue(crate::deque_codec::Enqueue::new(
                 123,
                 456,
                 byte_str(b"hello"),
                 binary_data(&[1, 2, 3]),
             )),
-            Packet::EnqueueAck(crate::dequeue_codec::EnqueueAck::new(SUCCESS)),
-            Packet::Dequeue(crate::dequeue_codec::Dequeue::new(
+            Packet::EnqueueAck(crate::deque_codec::EnqueueAck::new(Response::success())),
+            Packet::Dequeue(crate::deque_codec::Dequeue::new(
                 123,
                 456,
                 byte_str(b"test"),
             )),
-            Packet::DequeueAck(crate::dequeue_codec::DequeueAck::new(SUCCESS, None)),
-            Packet::Peek(crate::dequeue_codec::Peek::new(1, 1, byte_str(b"test"))),
-            Packet::PeekAck(crate::dequeue_codec::PeekAck::new(SUCCESS, None)),
-            Packet::Len(crate::dequeue_codec::Len::new(1, 1, byte_str(b"test"))),
-            Packet::LenAck(crate::dequeue_codec::LenAck::new(SUCCESS, 1)),
-            Packet::CreateQueue(crate::dequeue_codec::Create::new(
+            Packet::DequeueAck(crate::deque_codec::DequeueAck::new(
+                Response::success(),
+                None,
+            )),
+            Packet::Peek(crate::deque_codec::Peek::new(1, 1, byte_str(b"test"), 0)),
+            Packet::PeekAck(crate::deque_codec::PeekAck::new(Response::success(), None)),
+            Packet::Len(crate::deque_codec::Len::new(1, 1, byte_str(b"test"))),
+            Packet::LenAck(crate::deque_codec::LenAck::new(Response::success(), 1)),
+            Packet::CreateQueue(crate::deque_codec::Create::new(
                 1,
                 1,
                 byte_str(b"test"),
                 123,
+                1024,
             )),
-            Packet::CreateQueueAck(crate::dequeue_codec::CreateAck::new(SUCCESS)),
-            Packet::DeleteQueue(crate::dequeue_codec::Delete::new(1, 1, byte_str(b"test"))),
-            Packet::DeleteQueueAck(crate::dequeue_codec::DeleteAck::new(SUCCESS)),
+            Packet::CreateQueueAck(crate::deque_codec::CreateAck::new(Response::success())),
+            Packet::DeleteQueue(crate::deque_codec::Delete::new(1, 1, byte_str(b"test"))),
+            Packet::DeleteQueueAck(crate::deque_codec::DeleteAck::new(Response::success())),
             Packet::Put(crate::kv_store_codec::Put::new(
                 1,
                 1,
                 test_key(),
                 binary_data(&[1, 2, 3]),
             )),
-            Packet::PutAck(crate::kv_store_codec::PutAck::new(SUCCESS)),
+            Packet::PutAck(crate::kv_store_codec::PutAck::new(Response::success())),
             Packet::Get(crate::kv_store_codec::Get::new(123, 456, test_key())),
             Packet::GetAck(crate::kv_store_codec::GetAck::new(
-                SUCCESS,
+                Response::success(),
                 Some(binary_data(&[1, 2, 3])),
             )),
             Packet::Delete(crate::kv_store_codec::Delete::new(123, 456, test_key())),
-            Packet::DeleteAck(crate::kv_store_codec::DeleteAck::new(SUCCESS)),
+            Packet::DeleteAck(crate::kv_store_codec::DeleteAck::new(Response::success())),
             Packet::Report(Report::new(
                 123,
                 456,
@@ -706,7 +714,7 @@ pub(crate) mod tests {
                     next: byte_str(b"next"),
                 },
             )),
-            Packet::ReportAck(ReportAck::new(SUCCESS)),
+            Packet::ReportAck(ReportAck::new(Response::success())),
             Packet::Join(Join::new(
                 123,
                 456,
@@ -714,7 +722,7 @@ pub(crate) mod tests {
                 1,
                 false,
             )),
-            Packet::JoinAck(JoinAck::new_test(SUCCESS)),
+            Packet::JoinAck(JoinAck::new(Response::success(), 1)),
             Packet::Transfer(Transfer::new(
                 123,
                 456,
@@ -722,7 +730,7 @@ pub(crate) mod tests {
                 42,
                 binary_data(&[1, 2, 3]),
             )),
-            Packet::TransferAck(TransferAck::new(SUCCESS)),
+            Packet::TransferAck(TransferAck::new(Response::success())),
         ]
     }
 }

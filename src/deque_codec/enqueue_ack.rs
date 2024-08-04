@@ -6,7 +6,7 @@ use crate::{
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub struct ReportAck<S>
+pub struct EnqueueAck<S>
 where
     S: Shared,
 {
@@ -14,7 +14,7 @@ where
     pub(crate) response: Response<S>,
 }
 
-impl<R, O> PartialDecode<R, O> for ReportAck<O::Shared>
+impl<R, O> PartialDecode<R, O> for EnqueueAck<O::Shared>
 where
     R: Read,
     O: Owned,
@@ -23,7 +23,7 @@ where
     where
         Self: Sized,
     {
-        assert_eq!(header.kind, Kind::ReportAck);
+        assert_eq!(header.kind, Kind::EnqueueAck);
 
         let response = Response::decode_owned(reader, buffer)?;
 
@@ -31,7 +31,7 @@ where
     }
 }
 
-impl<W, S> Encode<W> for ReportAck<S>
+impl<W, S> Encode<W> for EnqueueAck<S>
 where
     S: Shared,
     W: Write,
@@ -44,7 +44,7 @@ where
     }
 }
 
-impl<S> Ack<S> for ReportAck<S>
+impl<S> Ack<S> for EnqueueAck<S>
 where
     S: Shared,
 {
@@ -58,15 +58,15 @@ where
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::{tests::verify_encode_decode, Header, Kind, Packet, Response, SharedImpl};
 
-    use super::ReportAck;
+    use super::EnqueueAck;
 
-    impl ReportAck<SharedImpl> {
+    impl EnqueueAck<SharedImpl> {
         pub fn new(response: Response<SharedImpl>) -> Self {
             Self {
-                header: Header::new_test_ack(Kind::ReportAck),
+                header: Header::new(Kind::EnqueueAck, 1, 1, 0),
                 response,
             }
         }
@@ -74,6 +74,6 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::ReportAck(ReportAck::new(Response::success())));
+        verify_encode_decode(Packet::EnqueueAck(EnqueueAck::new(Response::success())));
     }
 }

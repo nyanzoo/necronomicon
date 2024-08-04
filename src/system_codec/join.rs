@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{ByteStr, Owned, Shared},
     header::{Uuid, Version},
-    Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, Response,
 };
 
 use super::{JoinAck, Role};
@@ -63,17 +63,17 @@ where
         }
     }
 
-    pub fn ack(self) -> JoinAck {
+    pub fn ack(self) -> JoinAck<S> {
         JoinAck {
             header: Header::new(Kind::JoinAck, self.header.version, self.header.uuid, 0),
-            response_code: SUCCESS,
+            response: Response::success(),
         }
     }
 
-    pub fn nack(self, response_code: u8) -> JoinAck {
+    pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> JoinAck<S> {
         JoinAck {
             header: Header::new(Kind::JoinAck, self.header.version, self.header.uuid, 0),
-            response_code,
+            response: Response::fail(response_code, reason),
         }
     }
 }
@@ -127,18 +127,18 @@ mod test {
     use super::Join;
 
     #[test]
-    fn test_acks() {
+    fn acks() {
         let join = Join::new(1, 2, Role::Backend(byte_str(b"localhost")), 1, false);
 
         let ack = join.clone().ack();
-        assert_eq!(ack.response_code(), SUCCESS);
+        assert_eq!(ack.response().code(), SUCCESS);
 
-        let nack = join.nack(INTERNAL_ERROR);
-        assert_eq!(nack.response_code(), INTERNAL_ERROR);
+        let nack = join.nack(INTERNAL_ERROR, None);
+        assert_eq!(nack.response().code(), INTERNAL_ERROR);
     }
 
     #[test]
-    fn test_encode_decode() {
+    fn encode_decode() {
         verify_encode_decode(Packet::Join(Join::new(
             1,
             1,

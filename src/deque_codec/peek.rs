@@ -3,7 +3,8 @@ use std::io::{Read, Write};
 use crate::{
     buffer::{BinaryData, ByteStr, Owned, Shared},
     header::{Uuid, Version},
-    DecodeOwned, Encode, Error, Header, Kind, PartialDecode, SUCCESS,
+    response::Response,
+    Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode,
 };
 
 use super::PeekAck;
@@ -16,16 +17,23 @@ where
 {
     pub(crate) header: Header,
     pub(crate) path: ByteStr<S>,
+    pub(crate) sequence: u64,
 }
 
 impl<S> Peek<S>
 where
     S: Shared,
 {
-    pub fn new(version: impl Into<Version>, uuid: impl Into<Uuid>, path: ByteStr<S>) -> Self {
+    pub fn new(
+        version: impl Into<Version>,
+        uuid: impl Into<Uuid>,
+        path: ByteStr<S>,
+        sequence: u64,
+    ) -> Self {
         Self {
             header: Header::new(Kind::Peek, version, uuid, path.len()),
             path,
+            sequence,
         }
     }
 
@@ -45,15 +53,15 @@ where
                 self.header.uuid,
                 value.len(),
             ),
-            response_code: SUCCESS,
+            response: Response::success(),
             value: Some(value),
         }
     }
 
-    pub fn nack(self, response_code: u8) -> PeekAck<S> {
+    pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> PeekAck<S> {
         PeekAck {
             header: Header::new(Kind::PeekAck, self.header.version, self.header.uuid, 0),
-            response_code,
+            response: Response::fail(response_code, reason),
             value: None,
         }
     }
@@ -71,8 +79,13 @@ where
         assert_eq!(header.kind, Kind::Peek);
 
         let path = ByteStr::decode_owned(reader, buffer)?;
+        let sequence = u64::decode(reader)?;
 
-        Ok(Self { header, path })
+        Ok(Self {
+            header,
+            path,
+            sequence,
+        })
     }
 }
 
@@ -84,6 +97,7 @@ where
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
         self.path.encode(writer)?;
+        self.sequence.encode(writer)?;
 
         Ok(())
     }
@@ -100,18 +114,18 @@ mod test {
     use super::Peek;
 
     #[test]
-    fn test_acks() {
-        let peek = Peek::new(1, 2, byte_str(b"test"));
+    fn acks() {
+        let peek = Peek::new(1, 2, byte_str(b"test"), 0);
 
         let ack = peek.clone().ack(binary_data(&[1, 2, 3]));
-        assert_eq!(ack.response_code(), SUCCESS);
+        assert_eq!(ack.response().code(), SUCCESS);
 
-        let nack = peek.nack(INTERNAL_ERROR);
-        assert_eq!(nack.response_code(), INTERNAL_ERROR);
+        let nack = peek.nack(INTERNAL_ERROR, None);
+        assert_eq!(nack.response().code(), INTERNAL_ERROR);
     }
 
     #[test]
-    fn test_encode_decode() {
-        verify_encode_decode(Packet::Peek(Peek::new(1, 1, byte_str(b"test"))));
+    fn encode_decode() {
+        verify_encode_decode(Packet::Peek(Peek::new(1, 1, byte_str(b"test"), 0)));
     }
 }

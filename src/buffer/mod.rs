@@ -1,6 +1,4 @@
-use std::{fmt::Debug, sync::Arc};
-
-use crate::Error;
+use std::{fmt::Debug, hash::Hash, sync::Arc};
 
 mod block;
 
@@ -24,7 +22,7 @@ use self::block::Block;
 
 /// A thread-safe read-only buffer.
 pub trait Shared:
-    Send + Sync + AsRef<[u8]> + Clone + Debug + Eq + PartialEq + PartialOrd + Ord
+    Send + Sync + AsRef<[u8]> + Clone + Debug + Eq + PartialEq + PartialOrd + Ord + Hash
 {
     /// Returns the length of the buffer.
     fn len(&self) -> usize {
@@ -82,11 +80,15 @@ where
     buffer.fill(len);
 }
 
+pub trait BufferOwner: Copy {
+    fn why(&self) -> &'static str;
+}
+
 // TODO: add a utilization fn for the pool
 pub trait Pool {
     type Buffer: Owned;
 
-    fn acquire(&self) -> Result<Self::Buffer, Error>;
+    fn acquire(&self, reason: impl BufferOwner) -> Self::Buffer;
 
     fn block_size(&self) -> usize;
 
@@ -120,4 +122,11 @@ pub fn binary_data(data: &[u8]) -> BinaryData<SharedImpl> {
 #[cfg(any(test, feature = "test"))]
 pub fn byte_str(data: &[u8]) -> ByteStr<SharedImpl> {
     ByteStr::new(binary_data(data))
+}
+
+#[cfg(any(test, feature = "test"))]
+impl BufferOwner for &'static str {
+    fn why(&self) -> Self {
+        self
+    }
 }

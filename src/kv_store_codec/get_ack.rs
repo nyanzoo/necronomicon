@@ -2,7 +2,7 @@ use std::io::{Read, Write};
 
 use crate::{
     buffer::{BinaryData, Owned, Shared},
-    Ack, Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode,
+    Ack, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, Response,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -12,7 +12,7 @@ where
     S: Shared,
 {
     pub(crate) header: Header,
-    pub(crate) response_code: u8,
+    pub(crate) response: Response<S>,
     pub(crate) value: Option<BinaryData<S>>,
 }
 
@@ -36,12 +36,12 @@ where
     {
         assert_eq!(header.kind, Kind::GetAck);
 
-        let response_code = u8::decode(reader)?;
+        let response = Response::decode_owned(reader, buffer)?;
         let value = Option::decode_owned(reader, buffer)?;
 
         Ok(Self {
             header,
-            response_code,
+            response,
             value,
         })
     }
@@ -54,14 +54,14 @@ where
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
-        self.response_code.encode(writer)?;
+        self.response.encode(writer)?;
         self.value.encode(writer)?;
 
         Ok(())
     }
 }
 
-impl<S> Ack for GetAck<S>
+impl<S> Ack<S> for GetAck<S>
 where
     S: Shared,
 {
@@ -69,36 +69,31 @@ where
         &self.header
     }
 
-    fn response_code(&self) -> u8 {
-        self.response_code
+    fn response(&self) -> Response<S> {
+        self.response.clone()
     }
 }
 
 #[cfg(test)]
 mod test {
     use crate::{
-        buffer::{BinaryData, Shared},
-        tests::verify_encode_decode,
-        Header, Kind, Packet, SUCCESS,
+        buffer::BinaryData, tests::verify_encode_decode, Header, Kind, Packet, Response, SharedImpl,
     };
 
     use super::GetAck;
 
-    impl<S> GetAck<S>
-    where
-        S: Shared,
-    {
-        pub fn new(response_code: u8, value: Option<BinaryData<S>>) -> Self {
+    impl GetAck<SharedImpl> {
+        pub fn new(response: Response<SharedImpl>, value: Option<BinaryData<SharedImpl>>) -> Self {
             Self {
                 header: Header::new(Kind::GetAck, 1, 1, 0),
-                response_code,
+                response,
                 value,
             }
         }
     }
 
     #[test]
-    fn test_encode_decode() {
-        verify_encode_decode(Packet::GetAck(GetAck::new(SUCCESS, None)));
+    fn encode_decode() {
+        verify_encode_decode(Packet::GetAck(GetAck::new(Response::success(), None)));
     }
 }

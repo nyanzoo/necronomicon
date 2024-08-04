@@ -40,9 +40,9 @@ pub const START: u8 = 0;
 pub const ENQUEUE: u8 = START;
 /// An ack for an enqueue message.
 pub const ENQUEUE_ACK: u8 = START + 1;
-/// A message that can be used to dequeue a value.
+/// A message that can be used to deque a value.
 pub const DEQUEUE: u8 = START + 2;
-/// An ack for a dequeue message.
+/// An ack for a deque message.
 pub const DEQUEUE_ACK: u8 = START + 3;
 /// A message that can be used to peek at the next value.
 pub const PEEK: u8 = START + 4;
@@ -63,7 +63,7 @@ pub const DELETE_ACK: u8 = START + 11;
 
 pub const END: u8 = START + 11;
 
-pub fn is_dequeue_message(kind: u8) -> bool {
+pub fn is_deque_message(kind: u8) -> bool {
     (START..=END).contains(&kind)
 }
 
@@ -73,9 +73,9 @@ mod tests {
     use super::{END, START};
 
     #[test]
-    fn is_dequeue_message() {
-        assert!(super::is_dequeue_message(START));
-        assert!(super::is_dequeue_message(END));
-        assert!(!super::is_dequeue_message(END + 1));
+    fn is_deque_message() {
+        assert!(super::is_deque_message(START));
+        assert!(super::is_deque_message(END));
+        assert!(!super::is_deque_message(END + 1));
     }
 }

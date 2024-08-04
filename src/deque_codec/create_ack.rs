@@ -6,7 +6,7 @@ use crate::{
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[repr(C)]
-pub struct ReportAck<S>
+pub struct CreateAck<S>
 where
     S: Shared,
 {
@@ -14,7 +14,7 @@ where
     pub(crate) response: Response<S>,
 }
 
-impl<R, O> PartialDecode<R, O> for ReportAck<O::Shared>
+impl<R, O> PartialDecode<R, O> for CreateAck<O::Shared>
 where
     R: Read,
     O: Owned,
@@ -23,7 +23,7 @@ where
     where
         Self: Sized,
     {
-        assert_eq!(header.kind, Kind::ReportAck);
+        assert_eq!(header.kind, Kind::CreateQueueAck);
 
         let response = Response::decode_owned(reader, buffer)?;
 
@@ -31,10 +31,10 @@ where
     }
 }
 
-impl<W, S> Encode<W> for ReportAck<S>
+impl<W, S> Encode<W> for CreateAck<S>
 where
-    S: Shared,
     W: Write,
+    S: Shared,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
@@ -44,7 +44,7 @@ where
     }
 }
 
-impl<S> Ack<S> for ReportAck<S>
+impl<S> Ack<S> for CreateAck<S>
 where
     S: Shared,
 {
@@ -58,15 +58,18 @@ where
 }
 
 #[cfg(test)]
-mod test {
-    use crate::{tests::verify_encode_decode, Header, Kind, Packet, Response, SharedImpl};
+mod tests {
+    use crate::{
+        tests::verify_encode_decode, BinaryData, ByteStr, Header, Kind, Packet, Pool, PoolImpl,
+        Response, SharedImpl, QUEUE_ALREADY_EXISTS,
+    };
 
-    use super::ReportAck;
+    use super::CreateAck;
 
-    impl ReportAck<SharedImpl> {
+    impl CreateAck<SharedImpl> {
         pub fn new(response: Response<SharedImpl>) -> Self {
             Self {
-                header: Header::new_test_ack(Kind::ReportAck),
+                header: Header::new_test_ack(Kind::CreateQueueAck),
                 response,
             }
         }
@@ -74,6 +77,14 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::ReportAck(ReportAck::new(Response::success())));
+        let pool = PoolImpl::new(1024, 1024);
+        let mut buffer = pool.acquire("test");
+        let value = ByteStr::new(BinaryData::from_owned("kittens", &mut buffer).expect("data"));
+        verify_encode_decode(Packet::CreateQueueAck(CreateAck::new(Response::fail(
+            QUEUE_ALREADY_EXISTS,
+            Some(value),
+        ))));
+
+        verify_encode_decode(Packet::CreateQueueAck(CreateAck::new(Response::success())));
     }
 }

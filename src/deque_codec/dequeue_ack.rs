@@ -2,7 +2,7 @@ use std::io::{Read, Write};
 
 use crate::{
     buffer::{BinaryData, Owned, Shared},
-    Ack, Decode, DecodeOwned, Encode, Error, Header, Kind, PartialDecode,
+    Ack, DecodeOwned, Encode, Error, Header, Kind, PartialDecode, Response,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -12,7 +12,7 @@ where
     S: Shared,
 {
     pub(crate) header: Header,
-    pub(crate) response_code: u8,
+    pub(crate) response: Response<S>,
     pub(crate) value: Option<BinaryData<S>>,
 }
 
@@ -25,14 +25,14 @@ where
     where
         Self: Sized,
     {
-        assert_eq!(header.kind, Kind::DequeueAck);
+        assert_eq!(header.kind, Kind::DequeAck);
 
-        let response_code = u8::decode(reader)?;
+        let response = Response::decode_owned(reader, buffer)?;
         let value = Option::decode_owned(reader, buffer)?;
 
         Ok(Self {
             header,
-            response_code,
+            response,
             value,
         })
     }
@@ -45,14 +45,14 @@ where
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         self.header.encode(writer)?;
-        self.response_code.encode(writer)?;
+        self.response.encode(writer)?;
         self.value.encode(writer)?;
 
         Ok(())
     }
 }
 
-impl<S> Ack for DequeueAck<S>
+impl<S> Ack<S> for DequeueAck<S>
 where
     S: Shared,
 {
@@ -60,8 +60,8 @@ where
         &self.header
     }
 
-    fn response_code(&self) -> u8 {
-        self.response_code
+    fn response(&self) -> Response<S> {
+        self.response.clone()
     }
 }
 
@@ -69,24 +69,28 @@ where
 mod tests {
     use crate::{
         buffer::{BinaryData, SharedImpl},
+        response::Response,
         tests::verify_encode_decode,
-        Header, Kind, Packet, SUCCESS,
+        Header, Kind, Packet,
     };
 
     use super::DequeueAck;
 
     impl DequeueAck<SharedImpl> {
-        pub fn new(response_code: u8, value: Option<BinaryData<SharedImpl>>) -> Self {
+        pub fn new(response: Response<SharedImpl>, value: Option<BinaryData<SharedImpl>>) -> Self {
             Self {
-                header: Header::new_test_ack(Kind::DequeueAck),
-                response_code,
+                header: Header::new_test_ack(Kind::DequeAck),
+                response,
                 value,
             }
         }
     }
 
     #[test]
-    fn test_encode_decode() {
-        verify_encode_decode(Packet::DequeueAck(DequeueAck::new(SUCCESS, None)));
+    fn encode_decode() {
+        verify_encode_decode(Packet::DequeueAck(DequeueAck::new(
+            Response::success(),
+            None,
+        )));
     }
 }

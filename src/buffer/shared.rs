@@ -1,6 +1,7 @@
 use std::{
     cmp,
     fmt::{self, Debug, Formatter},
+    hash::Hash,
 };
 
 use super::{Block, Releaser};
@@ -29,21 +30,31 @@ impl Debug for SharedImpl {
 
 impl Eq for SharedImpl {}
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl PartialEq for SharedImpl {
     fn eq(&self, other: &Self) -> bool {
         self.inner == other.inner
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl PartialOrd for SharedImpl {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
+#[cfg_attr(coverage_nightly, coverage(off))]
 impl Ord for SharedImpl {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         self.inner.cmp(&other.inner)
+    }
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+impl Hash for SharedImpl {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.inner.hash(state);
     }
 }
 
