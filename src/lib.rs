@@ -491,26 +491,6 @@ mod option {
         }
     }
 
-    impl<R, T, O> DecodeOwned<R, O> for Option<T>
-    where
-        R: Read,
-        T: DecodeOwned<R, O>,
-        O: Owned,
-    {
-        fn decode_owned(reader: &mut R, buffer: &mut O) -> Result<Self, Error>
-        where
-            Self: Sized,
-        {
-            let is_some = u8::decode(reader)? > 0;
-            if is_some {
-                let value = T::decode_owned(reader, buffer)?;
-                Ok(Some(value))
-            } else {
-                Ok(None)
-            }
-        }
-    }
-
     impl<W, T> Encode<W> for Option<T>
     where
         W: Write,
