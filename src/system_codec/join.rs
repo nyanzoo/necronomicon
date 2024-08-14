@@ -120,7 +120,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        buffer::byte_str, system_codec::Role, tests::verify_encode_decode, Ack, Packet,
+        buffer::byte_str, system_codec::Role, tests::verify_encode_decode, Ack, SystemPacket,
         INTERNAL_ERROR, SUCCESS,
     };
 
@@ -139,7 +139,7 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::Join(Join::new(
+        verify_encode_decode(SystemPacket::Join(Join::new(
             1,
             1,
             Role::Backend(byte_str(b"localhost")),

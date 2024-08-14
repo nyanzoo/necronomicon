@@ -86,8 +86,8 @@ where
 mod test {
 
     use crate::{
-        kv_store_codec::test_key, tests::verify_encode_decode, Ack, Kind, Packet, INTERNAL_ERROR,
-        SUCCESS,
+        kv_store_codec::test_key, tests::verify_encode_decode, Ack, Kind, StorePacket,
+        INTERNAL_ERROR, SUCCESS,
     };
 
     use super::Delete;
@@ -115,6 +115,6 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::Delete(Delete::new(0, 1, test_key())));
+        verify_encode_decode(StorePacket::Delete(Delete::new(0, 1, test_key())));
     }
 }

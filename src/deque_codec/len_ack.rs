@@ -67,7 +67,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::verify_encode_decode, Header, Kind, Packet, Response, SharedImpl};
+    use crate::{tests::verify_encode_decode, DequePacket, Header, Kind, Response, SharedImpl};
 
     use super::LenAck;
 
@@ -83,6 +83,6 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::LenAck(LenAck::new(Response::success(), 123)));
+        verify_encode_decode(DequePacket::LenAck(LenAck::new(Response::success(), 123)));
     }
 }

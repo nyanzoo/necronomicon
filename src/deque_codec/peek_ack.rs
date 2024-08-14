@@ -70,7 +70,7 @@ mod tests {
     use crate::{
         buffer::{BinaryData, SharedImpl},
         tests::verify_encode_decode,
-        Header, Kind, Packet, Response,
+        DequePacket, Header, Kind, Response,
     };
 
     use super::PeekAck;
@@ -87,6 +87,9 @@ mod tests {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::PeekAck(PeekAck::new(Response::success(), None)));
+        verify_encode_decode(DequePacket::PeekAck(PeekAck::new(
+            Response::success(),
+            None,
+        )));
     }
 }

@@ -95,7 +95,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        buffer::byte_str, tests::verify_encode_decode, Ack, Packet, INTERNAL_ERROR, SUCCESS,
+        buffer::byte_str, tests::verify_encode_decode, Ack, DequePacket, INTERNAL_ERROR, SUCCESS,
     };
 
     use super::Delete;
@@ -113,6 +113,10 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::DeleteQueue(Delete::new(1, 2, byte_str(b"test"))));
+        verify_encode_decode(DequePacket::DeleteQueue(Delete::new(
+            1,
+            2,
+            byte_str(b"test"),
+        )));
     }
 }

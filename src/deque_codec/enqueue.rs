@@ -105,7 +105,7 @@ mod test {
     use crate::{
         buffer::{binary_data, byte_str},
         tests::verify_encode_decode,
-        Ack, Packet, INTERNAL_ERROR, SUCCESS,
+        Ack, DequePacket, INTERNAL_ERROR, SUCCESS,
     };
 
     use super::Enqueue;
@@ -123,7 +123,7 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::Enqueue(Enqueue::new(
+        verify_encode_decode(DequePacket::Enqueue(Enqueue::new(
             1,
             1,
             byte_str(b"test"),

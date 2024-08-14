@@ -87,7 +87,8 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        buffer::byte_str, tests::verify_encode_decode, Ack, Kind, Packet, INTERNAL_ERROR, SUCCESS,
+        buffer::byte_str, tests::verify_encode_decode, Ack, DequePacket, Kind, INTERNAL_ERROR,
+        SUCCESS,
     };
 
     use super::Len;
@@ -115,6 +116,6 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::Len(Len::new(0, 1, byte_str(b"test"))));
+        verify_encode_decode(DequePacket::Len(Len::new(0, 1, byte_str(b"test"))));
     }
 }

@@ -114,7 +114,7 @@ mod test {
     use crate::{
         buffer::{binary_data, byte_str},
         tests::verify_encode_decode,
-        Ack, Packet, INTERNAL_ERROR, SUCCESS,
+        Ack, SystemPacket, INTERNAL_ERROR, SUCCESS,
     };
 
     use super::Transfer;
@@ -138,7 +138,7 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::Transfer(Transfer::new(
+        verify_encode_decode(SystemPacket::Transfer(Transfer::new(
             1,
             2,
             byte_str(b"/tmp/kitty"),

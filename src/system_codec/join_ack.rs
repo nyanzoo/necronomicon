@@ -59,7 +59,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::verify_encode_decode, Header, Kind, Packet, Response, SharedImpl};
+    use crate::{tests::verify_encode_decode, Header, Kind, Response, SharedImpl, SystemPacket};
 
     use super::JoinAck;
 
@@ -74,6 +74,6 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::JoinAck(JoinAck::new(Response::success(), 1)));
+        verify_encode_decode(SystemPacket::JoinAck(JoinAck::new(Response::success(), 1)));
     }
 }

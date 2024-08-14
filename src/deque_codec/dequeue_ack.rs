@@ -71,7 +71,7 @@ mod tests {
         buffer::{BinaryData, SharedImpl},
         response::Response,
         tests::verify_encode_decode,
-        Header, Kind, Packet,
+        DequePacket, Header, Kind,
     };
 
     use super::DequeueAck;
@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::DequeueAck(DequeueAck::new(
+        verify_encode_decode(DequePacket::DequeueAck(DequeueAck::new(
             Response::success(),
             None,
         )));

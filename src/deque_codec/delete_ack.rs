@@ -59,7 +59,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{tests::verify_encode_decode, Header, Kind, Packet, Response, SharedImpl};
+    use crate::{tests::verify_encode_decode, DequePacket, Header, Kind, Response, SharedImpl};
 
     use super::DeleteAck;
 
@@ -74,6 +74,8 @@ mod tests {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::DeleteQueueAck(DeleteAck::new(Response::success())));
+        verify_encode_decode(DequePacket::DeleteQueueAck(DeleteAck::new(
+            Response::success(),
+        )));
     }
 }

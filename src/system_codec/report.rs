@@ -85,7 +85,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        buffer::byte_str, system_codec::Position, tests::verify_encode_decode, Ack, Packet,
+        buffer::byte_str, system_codec::Position, tests::verify_encode_decode, Ack, SystemPacket,
         INTERNAL_ERROR, SUCCESS,
     };
 
@@ -110,7 +110,7 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::Report(Report::new(
+        verify_encode_decode(SystemPacket::Report(Report::new(
             1,
             2,
             Position::Head {

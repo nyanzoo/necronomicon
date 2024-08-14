@@ -106,7 +106,7 @@ mod test {
         codes::{INTERNAL_ERROR, SUCCESS},
         kv_store_codec::test_key,
         tests::verify_encode_decode,
-        Ack, Packet,
+        Ack, StorePacket,
     };
 
     use super::Put;
@@ -124,7 +124,7 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::Put(Put::new(
+        verify_encode_decode(StorePacket::Put(Put::new(
             1,
             1,
             test_key(),
