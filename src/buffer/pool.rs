@@ -108,6 +108,15 @@ mod tests {
         assert_eq!(buffer1.unfilled_capacity(), 1024);
     }
 
+    #[test]
+    fn drop_pool() {
+        let pool = PoolImpl::new(1024, 1);
+        let buffer = pool.acquire("test");
+        assert_eq!(buffer.unfilled_capacity(), 1024);
+        drop(pool);
+        drop(buffer);
+    }
+
     #[cfg(feature = "timeout")]
     #[test]
     #[should_panic]
