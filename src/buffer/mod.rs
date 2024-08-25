@@ -107,10 +107,8 @@ impl Releaser {
     }
 
     fn release(&mut self, buffer: &mut Block) {
-        if Arc::strong_count(&self.0) == 1 {
-            if let Err(_) = self.0.send(buffer.release()) {
-                warn!("failed to release buffer, pool likely dropped");
-            }
+        if Arc::strong_count(&self.0) == 1 && self.0.send(buffer.release()).is_err() {
+            warn!("failed to release buffer, pool likely dropped");
         }
     }
 }
