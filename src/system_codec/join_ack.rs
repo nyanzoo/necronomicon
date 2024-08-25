@@ -57,6 +57,15 @@ where
     }
 }
 
+impl JoinAck<SharedImpl> {
+    pub fn new_test(response: Response<SharedImpl>, uuid: u128) -> Self {
+        Self {
+            header: Header::new_test_full(Kind::JoinAck, 0, uuid),
+            response,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::{tests::verify_encode_decode, Header, Kind, Response, SharedImpl, SystemPacket};
