@@ -57,8 +57,12 @@ where
     }
 }
 
-impl JoinAck<SharedImpl> {
-    pub fn new_test(response: Response<SharedImpl>, uuid: u128) -> Self {
+#[cfg(any(test, feature = "test"))]
+impl<S> JoinAck<S>
+where
+    S: Shared,
+{
+    pub fn new_test(response: Response<S>, uuid: u128) -> Self {
         Self {
             header: Header::new_test_full(Kind::JoinAck, 0, uuid),
             response,
