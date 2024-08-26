@@ -442,20 +442,6 @@ where
     fn encode(&self, writer: &mut W) -> Result<(), Error>;
 }
 
-pub fn write_all<W>(writer: &mut W, bytes: &[u8]) -> Result<usize, Error>
-where
-    W: Write,
-{
-    let written = writer.write(bytes).map_err(Error::Encode)?;
-    if written != bytes.len() {
-        return Err(Error::Encode(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "failed to write all bytes",
-        )));
-    }
-    Ok(written)
-}
-
 mod packet {
     use std::io::Write;
 
@@ -577,16 +563,9 @@ mod integer {
                 {
                     fn encode(&self, writer: &mut W) -> Result<(), Error> {
                         let data = self.to_be_bytes();
-                        let bytes = writer
-                            .write(&data)
-                            .map_err(Error::Encode)?;
-                        if bytes != data.len() {
-                            return Err(Error::Encode(std::io::Error::new(
-                                std::io::ErrorKind::Other,
-                                "failed to write all bytes",
-                            )));
-                        }
-                        Ok(())
+                        writer
+                            .write_all(&data)
+                            .map_err(Error::Encode)
                     }
                 }
             )+
