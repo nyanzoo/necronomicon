@@ -369,6 +369,7 @@ where
         Header::decode(reader)?
     };
 
+    trace!("header '{:?}'", header);
     if header.len > buffer.unfilled_capacity() {
         return Err(Error::BufferTooSmallForPacketDecode {
             header,
