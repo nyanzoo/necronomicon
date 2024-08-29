@@ -1,6 +1,6 @@
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::{Read, Write};
 
 use log::{debug, trace};
 
@@ -358,7 +358,7 @@ pub fn full_decode<R, O>(
     previous_decoded_header: Option<Header>,
 ) -> Result<Packet<O::Shared>, Error>
 where
-    R: Read + Seek,
+    R: Read,
     O: Owned,
 {
     trace!("previous_decoded_header: {:?}", previous_decoded_header);
