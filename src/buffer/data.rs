@@ -106,6 +106,7 @@ where
     S: Shared,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
+        trace!("data: {:?}", self.data.as_slice());
         self.len().encode(writer)?;
         writer.write_all(self.data.as_ref()).map_err(Error::Io)?;
 
