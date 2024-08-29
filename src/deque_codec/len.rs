@@ -47,7 +47,12 @@ where
 
     pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> LenAck<S> {
         LenAck {
-            header: Header::new(Kind::LenAck, self.header.version, self.header.uuid, 0),
+            header: Header::new(
+                Kind::LenAck,
+                self.header.version,
+                self.header.uuid,
+                reason.as_ref().map(|r| r.len()).unwrap_or_default(),
+            ),
             len: 0,
             response: Response::fail(response_code, reason),
         }

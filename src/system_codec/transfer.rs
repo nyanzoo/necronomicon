@@ -57,14 +57,19 @@ where
 
     pub fn ack(self) -> TransferAck<S> {
         TransferAck {
-            header: Header::new(Kind::TransferAck, self.header.version, self.header.uuid, 1),
+            header: Header::new(Kind::TransferAck, self.header.version, self.header.uuid, 0),
             response: Response::success(),
         }
     }
 
     pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> TransferAck<S> {
         TransferAck {
-            header: Header::new(Kind::TransferAck, self.header.version, self.header.uuid, 1),
+            header: Header::new(
+                Kind::TransferAck,
+                self.header.version,
+                self.header.uuid,
+                reason.as_ref().map(|r| r.len()).unwrap_or_default(),
+            ),
             response: Response::fail(response_code, reason),
         }
     }

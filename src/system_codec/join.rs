@@ -72,7 +72,12 @@ where
 
     pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> JoinAck<S> {
         JoinAck {
-            header: Header::new(Kind::JoinAck, self.header.version, self.header.uuid, 0),
+            header: Header::new(
+                Kind::JoinAck,
+                self.header.version,
+                self.header.uuid,
+                reason.as_ref().map(|r| r.len()).unwrap_or_default(),
+            ),
             response: Response::fail(response_code, reason),
         }
     }

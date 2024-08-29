@@ -1,6 +1,6 @@
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
-use std::io::{Read, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 
 use log::{debug, trace};
 
@@ -358,7 +358,7 @@ pub fn full_decode<R, O>(
     previous_decoded_header: Option<Header>,
 ) -> Result<Packet<O::Shared>, Error>
 where
-    R: Read,
+    R: Read + Seek,
     O: Owned,
 {
     trace!("previous_decoded_header: {:?}", previous_decoded_header);
@@ -369,7 +369,7 @@ where
         Header::decode(reader)?
     };
 
-    trace!("header '{:?}'", header);
+    println!("header '{:?}'", header);
     if header.len > buffer.unfilled_capacity() {
         return Err(Error::BufferTooSmallForPacketDecode {
             header,

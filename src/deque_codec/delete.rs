@@ -55,7 +55,7 @@ where
                 Kind::DeleteQueueAck,
                 self.header.version,
                 self.header.uuid,
-                0,
+                reason.as_ref().map(|r| r.len()).unwrap_or_default(),
             ),
             response: Response::fail(response_code, reason),
         }

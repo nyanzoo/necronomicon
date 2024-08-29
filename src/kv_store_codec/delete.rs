@@ -46,7 +46,12 @@ where
 
     pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> DeleteAck<S> {
         DeleteAck {
-            header: Header::new(Kind::DeleteAck, self.header.version, self.header.uuid, 0),
+            header: Header::new(
+                Kind::DeleteAck,
+                self.header.version,
+                self.header.uuid,
+                reason.as_ref().map(|r| r.len()).unwrap_or_default(),
+            ),
             response: Response::fail(response_code, reason),
         }
     }
