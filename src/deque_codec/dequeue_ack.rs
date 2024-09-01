@@ -16,6 +16,15 @@ where
     pub(crate) value: Option<BinaryData<S>>,
 }
 
+impl<S> DequeueAck<S>
+where
+    S: Shared,
+{
+    pub fn value(&self) -> Option<&BinaryData<S>> {
+        self.value.as_ref()
+    }
+}
+
 impl<R, O> PartialDecode<R, O> for DequeueAck<O::Shared>
 where
     R: Read,
