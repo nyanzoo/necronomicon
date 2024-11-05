@@ -545,7 +545,11 @@ mod integer {
                         Self: Sized,
                     {
                         let mut bytes = [0; std::mem::size_of::<$t>()];
-                        reader.read_exact(&mut bytes).map_err(Error::Decode)?;
+                        reader.read_exact(&mut bytes).map_err(|source| Error::Decode {
+                            kind: stringify!($t),
+                            buffer: None,
+                            source
+                        })?;
                         Ok(<$t>::from_be_bytes(bytes))
                     }
                 }
@@ -566,7 +570,10 @@ mod integer {
                         let data = self.to_be_bytes();
                         writer
                             .write_all(&data)
-                            .map_err(Error::Encode)
+                            .map_err(|source| Error::Encode {
+                                kind: stringify!($t),
+                                source
+                            })
                     }
                 }
             )+
@@ -652,7 +659,10 @@ mod slice {
     {
         fn encode(&self, writer: &mut W) -> Result<(), Error> {
             self.len().encode(writer)?;
-            writer.write_all(self).map_err(Error::Encode)?;
+            writer.write_all(self).map_err(|source| Error::Encode {
+                kind: "&[u8]",
+                source,
+            })?;
             Ok(())
         }
     }

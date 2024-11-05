@@ -88,8 +88,15 @@ where
         }
 
         {
+            let name = buffer.name();
             let buffer = buffer.unfilled();
-            reader.read_exact(&mut buffer[..len]).map_err(Error::Io)?;
+            reader
+                .read_exact(&mut buffer[..len])
+                .map_err(|source| Error::Decode {
+                    kind: "BinaryData",
+                    buffer: Some(name),
+                    source,
+                })?;
         }
 
         buffer.fill(len);
@@ -108,7 +115,12 @@ where
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
         trace!("data: {:?}", self.data.as_slice());
         self.len().encode(writer)?;
-        writer.write_all(self.data.as_ref()).map_err(Error::Io)?;
+        writer
+            .write_all(self.data.as_ref())
+            .map_err(|source| Error::Encode {
+                kind: "BinaryData",
+                source,
+            })?;
 
         Ok(())
     }
