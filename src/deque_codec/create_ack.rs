@@ -78,7 +78,7 @@ mod tests {
     #[test]
     fn encode_decode() {
         let pool = PoolImpl::new(1024, 1024);
-        let mut buffer = pool.acquire("test");
+        let mut buffer = pool.acquire("cat", "test");
         let value = ByteStr::new(BinaryData::from_owned("kittens", &mut buffer).expect("data"));
         verify_encode_decode(DequePacket::CreateQueueAck(CreateAck::new(Response::fail(
             QUEUE_ALREADY_EXISTS,

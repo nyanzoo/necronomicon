@@ -45,6 +45,9 @@ pub trait Shared:
 pub trait Owned {
     type Shared: Shared;
 
+    /// Returns the name of the buffer, useful for debugging.
+    fn name(&self) -> &'static str;
+
     /// Returns `true` if the buffer is empty.
     fn is_empty(&self) -> bool {
         self.filled_len() == 0
@@ -89,7 +92,7 @@ pub trait BufferOwner: Copy {
 pub trait Pool {
     type Buffer: Owned;
 
-    fn acquire(&self, reason: impl BufferOwner) -> Self::Buffer;
+    fn acquire(&self, name: &'static str, reason: impl BufferOwner) -> Self::Buffer;
 
     fn block_size(&self) -> usize;
 

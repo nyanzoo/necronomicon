@@ -7,14 +7,16 @@ use crate::buffer::{self, block::Block, Releaser};
 use super::shared::SharedImpl;
 
 pub struct OwnedImpl {
+    name: &'static str,
     inner: Block,
     filled: usize,
     releaser: Releaser,
 }
 
 impl OwnedImpl {
-    pub(crate) fn new(inner: Block, releaser: Releaser) -> Self {
+    pub(crate) fn new(name: &'static str, inner: Block, releaser: Releaser) -> Self {
         Self {
+            name,
             inner,
             filled: 0,
             releaser,
@@ -30,6 +32,10 @@ impl Drop for OwnedImpl {
 
 impl Owned for OwnedImpl {
     type Shared = SharedImpl;
+
+    fn name(&self) -> &'static str {
+        self.name
+    }
 
     fn unfilled(&mut self) -> &mut [u8] {
         let slice = self.inner.as_mut_slice();
@@ -59,6 +65,7 @@ impl Owned for OwnedImpl {
 
     fn split_at(&mut self, index: usize) -> Self {
         let other = Self {
+            name: self.name,
             inner: self.inner.split_at(index),
             filled: cmp::min(self.filled, index),
             releaser: self.releaser.clone(),
