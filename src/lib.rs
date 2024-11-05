@@ -548,7 +548,7 @@ mod integer {
                         reader.read_exact(&mut bytes).map_err(|source| Error::Decode {
                             kind: stringify!($t),
                             buffer: None,
-                            source
+                            source: source.into(),
                         })?;
                         Ok(<$t>::from_be_bytes(bytes))
                     }
@@ -572,7 +572,7 @@ mod integer {
                             .write_all(&data)
                             .map_err(|source| Error::Encode {
                                 kind: stringify!($t),
-                                source
+                                source: source.into(),
                             })
                     }
                 }
@@ -661,7 +661,7 @@ mod slice {
             self.len().encode(writer)?;
             writer.write_all(self).map_err(|source| Error::Encode {
                 kind: "&[u8]",
-                source,
+                source: source.into(),
             })?;
             Ok(())
         }

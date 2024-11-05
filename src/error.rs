@@ -15,13 +15,13 @@ pub enum Error {
     Decode {
         kind: &'static str,
         buffer: Option<&'static str>,
-        source: std::io::Error,
+        source: Box<dyn std::error::Error>,
     },
 
     #[error("encode err: {kind}-{source}")]
     Encode {
         kind: &'static str,
-        source: std::io::Error,
+        source: Box<dyn std::error::Error>,
     },
 
     #[error("invalid header kind: {0}")]

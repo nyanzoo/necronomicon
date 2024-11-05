@@ -95,7 +95,7 @@ where
                 .map_err(|source| Error::Decode {
                     kind: "BinaryData",
                     buffer: Some(name),
-                    source,
+                    source: source.into(),
                 })?;
         }
 
@@ -119,7 +119,7 @@ where
             .write_all(self.data.as_ref())
             .map_err(|source| Error::Encode {
                 kind: "BinaryData",
-                source,
+                source: source.into(),
             })?;
 
         Ok(())
