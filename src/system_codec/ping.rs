@@ -76,7 +76,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::{tests::verify_encode_decode, Ack, Packet, SharedImpl, SUCCESS};
+    use crate::{tests::verify_encode_decode, Ack, SharedImpl, SystemPacket, SUCCESS};
 
     use super::Ping;
 
@@ -90,6 +90,6 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::Ping(Ping::new(1, 2)));
+        verify_encode_decode(SystemPacket::Ping(Ping::new(1, 2)));
     }
 }

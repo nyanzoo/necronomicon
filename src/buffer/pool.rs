@@ -32,7 +32,7 @@ impl PoolImpl {
 impl Pool for PoolImpl {
     type Buffer = OwnedImpl;
 
-    fn acquire(&self, reason: impl BufferOwner) -> Self::Buffer {
+    fn acquire(&self, name: &'static str, reason: impl BufferOwner) -> Self::Buffer {
         trace!("acquiring buffer for {}", reason.why());
         #[cfg(feature = "timeout")]
         let block = self
@@ -42,7 +42,7 @@ impl Pool for PoolImpl {
         #[cfg(not(feature = "timeout"))]
         let block = self.rx.recv().expect("failed to acquire buffer");
         trace!("acquired buffer for {}", reason.why());
-        OwnedImpl::new(block, Releaser::new(self.tx.clone()))
+        OwnedImpl::new(name, block, Releaser::new(self.tx.clone()))
     }
 
     fn block_size(&self) -> usize {
@@ -62,15 +62,15 @@ mod tests {
     #[test]
     fn acquire() {
         let pool = PoolImpl::new(1024, 1);
-        let buffer = pool.acquire("test");
+        let buffer = pool.acquire("cat", "test");
         assert_eq!(buffer.unfilled_capacity(), 1024);
     }
 
     #[test]
     fn acquire_multiple() {
         let pool = PoolImpl::new(1024, 2);
-        let buffer1 = pool.acquire("test");
-        let buffer2 = pool.acquire("test");
+        let buffer1 = pool.acquire("cat", "test");
+        let buffer2 = pool.acquire("cat", "test");
         assert_eq!(buffer1.unfilled_capacity(), 1024);
         assert_eq!(buffer2.unfilled_capacity(), 1024);
     }
@@ -78,24 +78,24 @@ mod tests {
     #[test]
     fn acquire_release() {
         let pool = PoolImpl::new(1024, 1);
-        let buffer = pool.acquire("test");
+        let buffer = pool.acquire("cat", "test");
         assert_eq!(buffer.unfilled_capacity(), 1024);
         drop(buffer);
-        let buffer = pool.acquire("test");
+        let buffer = pool.acquire("cat", "test");
         assert_eq!(buffer.unfilled_capacity(), 1024);
     }
 
     #[test]
     fn acquire_release_multiple() {
         let pool = PoolImpl::new(1024, 2);
-        let buffer1 = pool.acquire("test");
-        let buffer2 = pool.acquire("test");
+        let buffer1 = pool.acquire("cat", "test");
+        let buffer2 = pool.acquire("cat", "test");
         assert_eq!(buffer1.unfilled_capacity(), 1024);
         assert_eq!(buffer2.unfilled_capacity(), 1024);
         drop(buffer1);
         drop(buffer2);
-        let mut buffer1 = pool.acquire("test");
-        let buffer2 = pool.acquire("test");
+        let mut buffer1 = pool.acquire("cat", "test");
+        let buffer2 = pool.acquire("cat", "test");
         assert_eq!(buffer1.unfilled_capacity(), 1024);
         assert_eq!(buffer2.unfilled_capacity(), 1024);
         let buffer3 = buffer1.split_at(512);
@@ -104,8 +104,17 @@ mod tests {
         let buffer1 = buffer1.into_shared();
         drop(buffer1);
         drop(buffer3);
-        let buffer1 = pool.acquire("test");
+        let buffer1 = pool.acquire("cat", "test");
         assert_eq!(buffer1.unfilled_capacity(), 1024);
+    }
+
+    #[test]
+    fn drop_pool() {
+        let pool = PoolImpl::new(1024, 1);
+        let buffer = pool.acquire("cat", "test");
+        assert_eq!(buffer.unfilled_capacity(), 1024);
+        drop(pool);
+        drop(buffer);
     }
 
     #[cfg(feature = "timeout")]
@@ -113,9 +122,9 @@ mod tests {
     #[should_panic]
     fn pool_clone_keeps_capacity() {
         let pool = PoolImpl::new(1024, 1);
-        let buffer = pool.acquire("test");
+        let buffer = pool.acquire("cat", "test");
         assert_eq!(buffer.unfilled_capacity(), 1024);
         let pool = pool.clone();
-        let _buffer = pool.acquire("test");
+        let _buffer = pool.acquire("cat", "test");
     }
 }

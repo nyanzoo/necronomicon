@@ -56,7 +56,12 @@ where
 
     pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> DequeueAck<S> {
         DequeueAck {
-            header: Header::new(Kind::DequeAck, self.header.version, self.header.uuid, 0),
+            header: Header::new(
+                Kind::DequeAck,
+                self.header.version,
+                self.header.uuid,
+                reason.as_ref().map(|r| r.len()).unwrap_or_default(),
+            ),
             response: Response::fail(response_code, reason),
             value: None,
         }
@@ -98,7 +103,7 @@ mod test {
     use crate::{
         buffer::{binary_data, byte_str},
         tests::verify_encode_decode,
-        Ack, Packet, INTERNAL_ERROR, SUCCESS,
+        Ack, DequePacket, INTERNAL_ERROR, SUCCESS,
     };
 
     use super::Dequeue;
@@ -116,6 +121,6 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::Dequeue(Dequeue::new(1, 2, byte_str(b"test"))));
+        verify_encode_decode(DequePacket::Dequeue(Dequeue::new(1, 2, byte_str(b"test"))));
     }
 }

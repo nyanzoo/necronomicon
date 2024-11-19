@@ -62,7 +62,7 @@ where
 mod test {
     use std::marker::PhantomData;
 
-    use crate::{tests::verify_encode_decode, Header, Kind, Packet, SharedImpl};
+    use crate::{tests::verify_encode_decode, Header, Kind, SharedImpl, SystemPacket};
 
     use super::PingAck;
 
@@ -77,6 +77,6 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::PingAck(PingAck::new()));
+        verify_encode_decode(SystemPacket::PingAck(PingAck::new()));
     }
 }

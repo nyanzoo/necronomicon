@@ -57,23 +57,27 @@ where
     }
 }
 
+#[cfg(any(test, feature = "test"))]
+impl<S> JoinAck<S>
+where
+    S: Shared,
+{
+    pub fn new(response: Response<S>, uuid: u128) -> Self {
+        Self {
+            header: Header::new_test_full(Kind::JoinAck, 0, uuid),
+            response,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use crate::{tests::verify_encode_decode, Header, Kind, Packet, Response, SharedImpl};
+    use crate::{tests::verify_encode_decode, Response, SystemPacket};
 
     use super::JoinAck;
 
-    impl JoinAck<SharedImpl> {
-        pub fn new(response: Response<SharedImpl>, uuid: u128) -> Self {
-            Self {
-                header: Header::new_test_full(Kind::JoinAck, 0, uuid),
-                response,
-            }
-        }
-    }
-
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::JoinAck(JoinAck::new(Response::success(), 1)));
+        verify_encode_decode(SystemPacket::JoinAck(JoinAck::new(Response::success(), 1)));
     }
 }

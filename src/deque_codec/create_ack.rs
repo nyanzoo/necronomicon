@@ -60,8 +60,8 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests::verify_encode_decode, BinaryData, ByteStr, Header, Kind, Packet, Pool, PoolImpl,
-        Response, SharedImpl, QUEUE_ALREADY_EXISTS,
+        tests::verify_encode_decode, BinaryData, ByteStr, DequePacket, Header, Kind, Pool,
+        PoolImpl, Response, SharedImpl, QUEUE_ALREADY_EXISTS,
     };
 
     use super::CreateAck;
@@ -78,13 +78,15 @@ mod tests {
     #[test]
     fn encode_decode() {
         let pool = PoolImpl::new(1024, 1024);
-        let mut buffer = pool.acquire("test");
+        let mut buffer = pool.acquire("cat", "test");
         let value = ByteStr::new(BinaryData::from_owned("kittens", &mut buffer).expect("data"));
-        verify_encode_decode(Packet::CreateQueueAck(CreateAck::new(Response::fail(
+        verify_encode_decode(DequePacket::CreateQueueAck(CreateAck::new(Response::fail(
             QUEUE_ALREADY_EXISTS,
             Some(value),
         ))));
 
-        verify_encode_decode(Packet::CreateQueueAck(CreateAck::new(Response::success())));
+        verify_encode_decode(DequePacket::CreateQueueAck(CreateAck::new(
+            Response::success(),
+        )));
     }
 }

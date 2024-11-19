@@ -7,6 +7,7 @@ use crossbeam_channel::Sender;
 pub use data::BinaryData;
 
 mod owned;
+use log::{trace, warn};
 pub use owned::OwnedImpl;
 
 mod pool;
@@ -43,6 +44,9 @@ pub trait Shared:
 /// A read-write buffer.
 pub trait Owned {
     type Shared: Shared;
+
+    /// Returns the name of the buffer, useful for debugging.
+    fn name(&self) -> &'static str;
 
     /// Returns `true` if the buffer is empty.
     fn is_empty(&self) -> bool {
@@ -88,7 +92,7 @@ pub trait BufferOwner: Copy {
 pub trait Pool {
     type Buffer: Owned;
 
-    fn acquire(&self, reason: impl BufferOwner) -> Self::Buffer;
+    fn acquire(&self, name: &'static str, reason: impl BufferOwner) -> Self::Buffer;
 
     fn block_size(&self) -> usize;
 
@@ -107,9 +111,10 @@ impl Releaser {
 
     fn release(&mut self, buffer: &mut Block) {
         if Arc::strong_count(&self.0) == 1 {
-            self.0
-                .send(buffer.release())
-                .expect("failed to release buffer");
+            trace!("releasing buffer to pool");
+            if self.0.send(buffer.release()).is_err() {
+                warn!("failed to release buffer, pool likely dropped");
+            }
         }
     }
 }

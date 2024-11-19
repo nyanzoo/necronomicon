@@ -46,7 +46,12 @@ where
 
     pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> DeleteAck<S> {
         DeleteAck {
-            header: Header::new(Kind::DeleteAck, self.header.version, self.header.uuid, 0),
+            header: Header::new(
+                Kind::DeleteAck,
+                self.header.version,
+                self.header.uuid,
+                reason.as_ref().map(|r| r.len()).unwrap_or_default(),
+            ),
             response: Response::fail(response_code, reason),
         }
     }
@@ -86,8 +91,8 @@ where
 mod test {
 
     use crate::{
-        kv_store_codec::test_key, tests::verify_encode_decode, Ack, Kind, Packet, INTERNAL_ERROR,
-        SUCCESS,
+        kv_store_codec::test_key, tests::verify_encode_decode, Ack, Kind, StorePacket,
+        INTERNAL_ERROR, SUCCESS,
     };
 
     use super::Delete;
@@ -115,6 +120,6 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::Delete(Delete::new(0, 1, test_key())));
+        verify_encode_decode(StorePacket::Delete(Delete::new(0, 1, test_key())));
     }
 }

@@ -46,7 +46,12 @@ where
 
     pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> ReportAck<S> {
         ReportAck {
-            header: Header::new(Kind::ReportAck, self.header.version, self.header.uuid, 0),
+            header: Header::new(
+                Kind::ReportAck,
+                self.header.version,
+                self.header.uuid,
+                reason.as_ref().map(|r| r.len()).unwrap_or_default(),
+            ),
             response: Response::fail(response_code, reason),
         }
     }
@@ -85,7 +90,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        buffer::byte_str, system_codec::Position, tests::verify_encode_decode, Ack, Packet,
+        buffer::byte_str, system_codec::Position, tests::verify_encode_decode, Ack, SystemPacket,
         INTERNAL_ERROR, SUCCESS,
     };
 
@@ -110,7 +115,7 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::Report(Report::new(
+        verify_encode_decode(SystemPacket::Report(Report::new(
             1,
             2,
             Position::Head {

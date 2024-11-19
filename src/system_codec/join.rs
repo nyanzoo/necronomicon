@@ -72,7 +72,12 @@ where
 
     pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> JoinAck<S> {
         JoinAck {
-            header: Header::new(Kind::JoinAck, self.header.version, self.header.uuid, 0),
+            header: Header::new(
+                Kind::JoinAck,
+                self.header.version,
+                self.header.uuid,
+                reason.as_ref().map(|r| r.len()).unwrap_or_default(),
+            ),
             response: Response::fail(response_code, reason),
         }
     }
@@ -120,7 +125,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        buffer::byte_str, system_codec::Role, tests::verify_encode_decode, Ack, Packet,
+        buffer::byte_str, system_codec::Role, tests::verify_encode_decode, Ack, SystemPacket,
         INTERNAL_ERROR, SUCCESS,
     };
 
@@ -139,7 +144,7 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::Join(Join::new(
+        verify_encode_decode(SystemPacket::Join(Join::new(
             1,
             1,
             Role::Backend(byte_str(b"localhost")),

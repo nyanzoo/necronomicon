@@ -98,7 +98,7 @@ mod tests {
     #[test]
     fn byte_str() {
         let pool = PoolImpl::new(1024, 1024);
-        let mut buffer = pool.acquire("test");
+        let mut buffer = pool.acquire("cat", "test");
         let data = "hello world";
         let byte_str = ByteStr::from_owned(data, &mut buffer).expect("byte_str");
 

@@ -11,11 +11,18 @@ pub enum Error {
         capacity: usize,
     },
 
-    #[error("decode err: {0}")]
-    Decode(#[source] std::io::Error),
+    #[error("decode err: {kind}-{buffer:?}-{source}")]
+    Decode {
+        kind: &'static str,
+        buffer: Option<&'static str>,
+        source: Box<dyn std::error::Error>,
+    },
 
-    #[error("encode err: {0}")]
-    Encode(#[source] std::io::Error),
+    #[error("encode err: {kind}-{source}")]
+    Encode {
+        kind: &'static str,
+        source: Box<dyn std::error::Error>,
+    },
 
     #[error("invalid header kind: {0}")]
     InvalidHeaderKind(u8),

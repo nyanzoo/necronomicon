@@ -77,7 +77,8 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        buffer::BinaryData, tests::verify_encode_decode, Header, Kind, Packet, Response, SharedImpl,
+        buffer::BinaryData, tests::verify_encode_decode, Header, Kind, Response, SharedImpl,
+        StorePacket,
     };
 
     use super::GetAck;
@@ -94,6 +95,6 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::GetAck(GetAck::new(Response::success(), None)));
+        verify_encode_decode(StorePacket::GetAck(GetAck::new(Response::success(), None)));
     }
 }

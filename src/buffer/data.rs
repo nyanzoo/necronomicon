@@ -88,8 +88,15 @@ where
         }
 
         {
+            let name = buffer.name();
             let buffer = buffer.unfilled();
-            reader.read_exact(&mut buffer[..len]).map_err(Error::Io)?;
+            reader
+                .read_exact(&mut buffer[..len])
+                .map_err(|source| Error::Decode {
+                    kind: "BinaryData",
+                    buffer: Some(name),
+                    source: source.into(),
+                })?;
         }
 
         buffer.fill(len);
@@ -106,8 +113,14 @@ where
     S: Shared,
 {
     fn encode(&self, writer: &mut W) -> Result<(), Error> {
+        trace!("data: {:?}", self.data.as_slice());
         self.len().encode(writer)?;
-        writer.write_all(self.data.as_ref()).map_err(Error::Io)?;
+        writer
+            .write_all(self.data.as_ref())
+            .map_err(|source| Error::Encode {
+                kind: "BinaryData",
+                source: source.into(),
+            })?;
 
         Ok(())
     }
@@ -122,13 +135,13 @@ mod tests {
     fn binary_data() {
         let data = vec![1, 2, 3, 4, 5];
         let pool = PoolImpl::new(10, 10);
-        let mut buffer = pool.acquire("test");
+        let mut buffer = pool.acquire("cat", "test");
         let binary_data = BinaryData::from_owned(&data, &mut buffer).expect("from_owned");
         assert_eq!(binary_data.len(), 5);
         assert!(!binary_data.is_empty());
         assert_eq!(binary_data.data().as_slice(), &[1, 2, 3, 4, 5]);
 
-        let mut buffer = pool.acquire("test");
+        let mut buffer = pool.acquire("cat", "test");
         let binary_data = BinaryData::from_owned([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], &mut buffer);
         assert!(binary_data.is_err());
     }

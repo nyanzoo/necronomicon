@@ -16,8 +16,11 @@ impl<S> Response<S>
 where
     S: Shared,
 {
-    pub fn fail(code: u8, reason: Option<ByteStr<S>>) -> Self {
-        Self { code, reason }
+    pub fn fail(code: impl Into<u8>, reason: Option<ByteStr<S>>) -> Self {
+        Self {
+            code: code.into(),
+            reason,
+        }
     }
 
     pub const fn success() -> Self {

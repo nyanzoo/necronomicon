@@ -57,14 +57,19 @@ where
 
     pub fn ack(self) -> TransferAck<S> {
         TransferAck {
-            header: Header::new(Kind::TransferAck, self.header.version, self.header.uuid, 1),
+            header: Header::new(Kind::TransferAck, self.header.version, self.header.uuid, 0),
             response: Response::success(),
         }
     }
 
     pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> TransferAck<S> {
         TransferAck {
-            header: Header::new(Kind::TransferAck, self.header.version, self.header.uuid, 1),
+            header: Header::new(
+                Kind::TransferAck,
+                self.header.version,
+                self.header.uuid,
+                reason.as_ref().map(|r| r.len()).unwrap_or_default(),
+            ),
             response: Response::fail(response_code, reason),
         }
     }
@@ -114,7 +119,7 @@ mod test {
     use crate::{
         buffer::{binary_data, byte_str},
         tests::verify_encode_decode,
-        Ack, Packet, INTERNAL_ERROR, SUCCESS,
+        Ack, SystemPacket, INTERNAL_ERROR, SUCCESS,
     };
 
     use super::Transfer;
@@ -138,7 +143,7 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::Transfer(Transfer::new(
+        verify_encode_decode(SystemPacket::Transfer(Transfer::new(
             1,
             2,
             byte_str(b"/tmp/kitty"),

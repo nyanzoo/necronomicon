@@ -73,7 +73,7 @@ where
                 Kind::CreateQueueAck,
                 self.header.version,
                 self.header.uuid,
-                0,
+                reason.as_ref().map(|r| r.len()).unwrap_or_default(),
             ),
             response: Response::fail(response_code, reason),
         }
@@ -122,7 +122,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        buffer::byte_str, tests::verify_encode_decode, Ack, Packet, INTERNAL_ERROR, SUCCESS,
+        buffer::byte_str, tests::verify_encode_decode, Ack, DequePacket, INTERNAL_ERROR, SUCCESS,
     };
 
     use super::Create;
@@ -150,7 +150,7 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::CreateQueue(Create::new(
+        verify_encode_decode(DequePacket::CreateQueue(Create::new(
             0,
             1,
             byte_str(b"test"),

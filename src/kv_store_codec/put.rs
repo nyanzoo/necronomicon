@@ -59,7 +59,12 @@ where
 
     pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> PutAck<S> {
         PutAck {
-            header: Header::new(Kind::PutAck, self.header.version, self.header.uuid, 0),
+            header: Header::new(
+                Kind::PutAck,
+                self.header.version,
+                self.header.uuid,
+                reason.as_ref().map(|r| r.len()).unwrap_or_default(),
+            ),
             response: Response::fail(response_code, reason),
         }
     }
@@ -106,7 +111,7 @@ mod test {
         codes::{INTERNAL_ERROR, SUCCESS},
         kv_store_codec::test_key,
         tests::verify_encode_decode,
-        Ack, Packet,
+        Ack, StorePacket,
     };
 
     use super::Put;
@@ -124,7 +129,7 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::Put(Put::new(
+        verify_encode_decode(StorePacket::Put(Put::new(
             1,
             1,
             test_key(),

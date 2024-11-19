@@ -47,7 +47,12 @@ where
 
     pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> LenAck<S> {
         LenAck {
-            header: Header::new(Kind::LenAck, self.header.version, self.header.uuid, 0),
+            header: Header::new(
+                Kind::LenAck,
+                self.header.version,
+                self.header.uuid,
+                reason.as_ref().map(|r| r.len()).unwrap_or_default(),
+            ),
             len: 0,
             response: Response::fail(response_code, reason),
         }
@@ -87,7 +92,8 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        buffer::byte_str, tests::verify_encode_decode, Ack, Kind, Packet, INTERNAL_ERROR, SUCCESS,
+        buffer::byte_str, tests::verify_encode_decode, Ack, DequePacket, Kind, INTERNAL_ERROR,
+        SUCCESS,
     };
 
     use super::Len;
@@ -115,6 +121,6 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::Len(Len::new(0, 1, byte_str(b"test"))));
+        verify_encode_decode(DequePacket::Len(Len::new(0, 1, byte_str(b"test"))));
     }
 }

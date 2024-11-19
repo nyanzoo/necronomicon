@@ -52,7 +52,12 @@ where
 
     pub fn nack(self, response_code: u8, reason: Option<ByteStr<S>>) -> GetAck<S> {
         GetAck {
-            header: Header::new(Kind::GetAck, self.header.version, self.header.uuid, 0),
+            header: Header::new(
+                Kind::GetAck,
+                self.header.version,
+                self.header.uuid,
+                reason.as_ref().map(|r| r.len()).unwrap_or_default(),
+            ),
             response: Response::fail(response_code, reason),
             value: None,
         }
@@ -93,7 +98,7 @@ where
 mod test {
     use crate::{
         buffer::binary_data, kv_store_codec::test_key, tests::verify_encode_decode, Ack, Kind,
-        Packet, INTERNAL_ERROR, SUCCESS,
+        StorePacket, INTERNAL_ERROR, SUCCESS,
     };
 
     use super::Get;
@@ -121,6 +126,6 @@ mod test {
 
     #[test]
     fn encode_decode() {
-        verify_encode_decode(Packet::Get(Get::new(1, 1, test_key())));
+        verify_encode_decode(StorePacket::Get(Get::new(1, 1, test_key())));
     }
 }
